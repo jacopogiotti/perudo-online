@@ -548,8 +548,20 @@ function showPause(room) {
     : 'In attesa del rientro di un giocatore.';
   $('#pause-code').textContent = room.code;
   $('#pause-hint').innerHTML = names
-    ? `Comunica questo codice a <strong>${names}</strong>: potrà rientrare aprendo il gioco ed entrando con lo stesso nome.`
-    : 'Comunica questo codice a chi è uscito: rientrerà entrando con lo stesso nome.';
+    ? `Comunica questo codice a <strong>${names}</strong>: per rientrare basta riaprire il gioco ed entrare con lo stesso nome.`
+    : 'Comunica questo codice a chi è uscito: per rientrare basta riaprire il gioco ed entrare con lo stesso nome.';
+
+  // Anche in pausa restano disponibili le azioni: host = chiudi tavolo, guest = abbandona.
+  const isHost = !!(state.me && state.me.isHost);
+  const btn = $('#pause-action');
+  btn.textContent = isHost ? '⏹ Termina e chiudi il tavolo' : '🚪 Abbandona anche tu';
+  btn.onclick = isHost
+    ? doEndGame
+    : () =>
+        doLeaveTable(
+          'Vuoi abbandonare anche tu? La partita resterà in pausa e verrai aggiunto a chi deve rientrare.'
+        );
+
   $('#pause-overlay').classList.remove('hidden');
 }
 function hidePause() {
