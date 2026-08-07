@@ -304,6 +304,19 @@ button:disabled {
 .pause-icon {
   font-size: 44px;
 }
+.pause-code-box {
+  background: var(--bg-2);
+  border: 1px dashed var(--accent);
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.pause-code-box .room-code {
+  font-size: 40px;
+  padding-left: 8px;
+}
 .round-num {
   font-size: 22px;
   font-weight: 800;

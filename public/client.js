@@ -546,6 +546,10 @@ function showPause(room) {
   $('#pause-sub').innerHTML = names
     ? `In attesa del rientro di <strong>${names}</strong>.`
     : 'In attesa del rientro di un giocatore.';
+  $('#pause-code').textContent = room.code;
+  $('#pause-hint').innerHTML = names
+    ? `Comunica questo codice a <strong>${names}</strong>: potrà rientrare aprendo il gioco ed entrando con lo stesso nome.`
+    : 'Comunica questo codice a chi è uscito: rientrerà entrando con lo stesso nome.';
   $('#pause-overlay').classList.remove('hidden');
 }
 function hidePause() {
