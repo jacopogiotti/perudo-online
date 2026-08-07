@@ -278,6 +278,22 @@ button:disabled {
   align-items: center;
   margin-bottom: 14px;
 }
+.head-right {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.end-btn {
+  background: transparent;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+  font-size: 13px;
+  font-weight: 700;
+  padding: 8px 12px;
+}
+.end-btn:active {
+  background: rgba(255, 93, 115, 0.15);
+}
 .round-num {
   font-size: 22px;
   font-weight: 800;

@@ -187,6 +187,9 @@ function renderGame(room) {
   const g = room.game;
   $('#game-round').textContent = g.roundNumber;
 
+  // Pulsante "Termina partita": solo per l'host.
+  $('#btn-end-game').classList.toggle('hidden', !(state.me && state.me.isHost));
+
   // Nuovo round: azzera il selettore alla "puntata consigliata" 1 × valore 1.
   if (state.lastRoundSeen !== g.roundNumber) {
     state.lastRoundSeen = g.roundNumber;
@@ -407,6 +410,13 @@ $('#btn-bid').addEventListener('click', () => {
 
 $('#btn-doubt').addEventListener('click', () => {
   socket.emit('challenge', {}, (res) => {
+    if (!res.ok) toast(res.error);
+  });
+});
+
+$('#btn-end-game').addEventListener('click', () => {
+  if (!window.confirm('Terminare la partita per tutti? Tornerete alla lobby.')) return;
+  socket.emit('endGame', {}, (res) => {
     if (!res.ok) toast(res.error);
   });
 });
@@ -635,6 +645,10 @@ socket.on('kicked', () => {
   clearSession();
   toast('Sei stato rimosso dal tavolo.');
   setTimeout(() => (location.href = location.pathname), 1200);
+});
+
+socket.on('gameEnded', () => {
+  toast("Partita terminata dall'host — tornate alla lobby.");
 });
 
 socket.on('connect', () => {

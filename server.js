@@ -287,6 +287,31 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('chatMessage', msg);
   });
 
+  // --- Termina partita (host): riporta il tavolo alla lobby ---
+  socket.on('endGame', (_data, cb) => {
+    const ctx = socket.data || {};
+    const room = manager.getRoom(ctx.code);
+    if (!room) return ack(cb, { ok: false, error: 'Tavolo non trovato.' });
+    if (ctx.playerId !== room.hostId) {
+      return ack(cb, { ok: false, error: 'Solo l\'host può terminare la partita.' });
+    }
+    if (room.status !== 'playing') {
+      return ack(cb, { ok: false, error: 'Nessuna partita in corso.' });
+    }
+    // Reset alla lobby, mantenendo i giocatori (pronti per una nuova partita).
+    if (room._revealTimer) {
+      clearTimeout(room._revealTimer);
+      room._revealTimer = null;
+    }
+    room.game = null;
+    room.status = 'lobby';
+    room.rolled = new Set();
+    room.readyNext = new Set();
+    ack(cb, { ok: true });
+    io.to(room.code).emit('gameEnded');
+    broadcastRoom(room);
+  });
+
   // --- Espulsione giocatore (host, solo in lobby) ---
   socket.on('kickPlayer', ({ playerId } = {}, cb) => {
     const ctx = socket.data || {};
