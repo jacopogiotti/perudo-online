@@ -163,7 +163,17 @@
         </div>
       </div>
 
-      <!-- ============ OVERLAY PAUSA ============ -->
+      <!-- ============ OVERLAY DISCONNESSIONE (leggero) ============ -->
+      <div id="disconnect-overlay" class="overlay light-overlay hidden">
+        <div class="overlay-card light-card">
+          <div class="reconnect-spin"><span class="spinner big"></span></div>
+          <h2>In pausa un istante…</h2>
+          <p id="disconnect-sub" class="overlay-sub"></p>
+          <button id="disconnect-action" class="danger-ghost"></button>
+        </div>
+      </div>
+
+      <!-- ============ OVERLAY PAUSA (abbandono) ============ -->
       <div id="pause-overlay" class="overlay hidden">
         <div class="overlay-card">
           <div class="pause-icon">⏸️</div>

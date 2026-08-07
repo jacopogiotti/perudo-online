@@ -304,6 +304,25 @@ button:disabled {
 .pause-icon {
   font-size: 44px;
 }
+
+/* overlay leggero (disconnessione temporanea) */
+.light-overlay {
+  background: rgba(6, 8, 20, 0.45);
+  backdrop-filter: blur(1px);
+}
+.light-card {
+  max-width: 380px;
+  border-color: var(--accent);
+}
+.reconnect-spin {
+  display: flex;
+  justify-content: center;
+}
+.spinner.big {
+  width: 34px;
+  height: 34px;
+  border-width: 4px;
+}
 .pause-code-box {
   background: var(--bg-2);
   border: 1px dashed var(--accent);

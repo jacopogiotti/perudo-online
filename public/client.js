@@ -259,7 +259,7 @@ function renderGame(room) {
 
   // Banner lanci
   const banner = $('#rolls-banner');
-  if (g.phase === 'bidding' && !rolling.allRolled) {
+  if (g.phase === 'bidding' && !rolling.allRolled && !room.paused) {
     banner.classList.remove('hidden');
     $('#rolls-text').textContent = `Lanci ${rolling.rolledIds.length}/${rolling.need.length} — in attesa che tutti lancino i dadi`;
   } else {
@@ -282,7 +282,11 @@ function renderGame(room) {
   const controls = $('#controls');
   const waiting = $('#waiting-turn');
 
-  if (myTurn && iRolled && rolling.allRolled) {
+  if (room.paused) {
+    // In pausa (abbandono o disconnessione): nessuna mossa, ci pensa l'overlay.
+    controls.classList.add('hidden');
+    waiting.classList.add('hidden');
+  } else if (myTurn && iRolled && rolling.allRolled) {
     controls.classList.remove('hidden');
     waiting.classList.add('hidden');
     const minQty = g.currentBid ? g.currentBid.quantity : 1;
@@ -541,31 +545,46 @@ function hideOverlay() {
   state.revealKey = null;
 }
 
-function showPause(room) {
-  const names = (room.waitingFor || []).map(escapeHtml).join(', ');
-  $('#pause-sub').innerHTML = names
-    ? `In attesa del rientro di <strong>${names}</strong>.`
-    : 'In attesa del rientro di un giocatore.';
-  $('#pause-code').textContent = room.code;
-  $('#pause-hint').innerHTML = names
-    ? `Comunica questo codice a <strong>${names}</strong>: per rientrare basta riaprire il gioco ed entrare con lo stesso nome.`
-    : 'Comunica questo codice a chi è uscito: per rientrare basta riaprire il gioco ed entrare con lo stesso nome.';
-
-  // Anche in pausa restano disponibili le azioni: host = chiudi tavolo, guest = abbandona.
+// Pulsante d'azione condiviso dagli overlay: host = chiudi tavolo, guest = abbandona.
+function configureAbandonBtn(btn) {
   const isHost = !!(state.me && state.me.isHost);
-  const btn = $('#pause-action');
-  btn.textContent = isHost ? '⏹ Termina e chiudi il tavolo' : '🚪 Abbandona anche tu';
+  btn.textContent = isHost ? '⏹ Termina e chiudi il tavolo' : '🚪 Abbandona il tavolo';
   btn.onclick = isHost
     ? doEndGame
     : () =>
         doLeaveTable(
-          'Vuoi abbandonare anche tu? La partita resterà in pausa e verrai aggiunto a chi deve rientrare.'
+          'Vuoi abbandonare il tavolo? La partita resterà in pausa finché non rientri (con lo stesso nome).'
         );
+}
 
+// Overlay PESANTE: qualcuno ha lasciato il tavolo col pulsante (serve il codice).
+function showPause(room) {
+  const names = (room.leftPlayers || []).map(escapeHtml).join(', ');
+  $('#pause-sub').innerHTML = names
+    ? `<strong>${names}</strong> ha lasciato il tavolo.`
+    : 'Un giocatore ha lasciato il tavolo.';
+  $('#pause-code').textContent = room.code;
+  $('#pause-hint').innerHTML = names
+    ? `Comunica questo codice a <strong>${names}</strong>: per rientrare basta riaprire il gioco ed entrare con lo stesso nome.`
+    : 'Comunica questo codice a chi è uscito: per rientrare basta riaprire il gioco ed entrare con lo stesso nome.';
+  configureAbandonBtn($('#pause-action'));
   $('#pause-overlay').classList.remove('hidden');
 }
 function hidePause() {
   $('#pause-overlay').classList.add('hidden');
+}
+
+// Overlay LEGGERO: disconnessione temporanea (rientro automatico atteso).
+function showDisconnect(room) {
+  const names = (room.disconnectedPlayers || []).map(escapeHtml).join(', ');
+  $('#disconnect-sub').innerHTML = names
+    ? `In attesa che <strong>${names}</strong> si riconnetta… riprende da solo appena torna.`
+    : 'In attesa di riconnessione…';
+  configureAbandonBtn($('#disconnect-action'));
+  $('#disconnect-overlay').classList.remove('hidden');
+}
+function hideDisconnect() {
+  $('#disconnect-overlay').classList.add('hidden');
 }
 
 // ---------- CHAT ----------
@@ -660,6 +679,7 @@ socket.on('state', (room) => {
   if (room.status === 'lobby') {
     hideOverlay();
     hidePause();
+    hideDisconnect();
     renderLobby(room);
     showScreen('screen-lobby');
   } else {
@@ -669,9 +689,18 @@ socket.on('state', (room) => {
     if (room.paused) {
       // La pausa ha la precedenza su qualsiasi altro overlay.
       hideOverlay();
-      showPause(room);
+      if ((room.leftPlayers || []).length > 0) {
+        // Abbandono esplicito -> overlay pesante col codice.
+        hideDisconnect();
+        showPause(room);
+      } else {
+        // Solo disconnessione temporanea -> overlay leggero.
+        hidePause();
+        showDisconnect(room);
+      }
     } else {
       hidePause();
+      hideDisconnect();
       if (room.game && (room.game.phase === 'reveal' || room.game.phase === 'gameOver')) {
         showReveal(room);
       } else {

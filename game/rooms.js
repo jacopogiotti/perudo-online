@@ -117,6 +117,7 @@ class RoomManager {
       }
       seat.token = newToken(); // nuova sessione per chi subentra
       seat.connected = true;
+      seat.left = false;
       room.emptySince = null;
       return { room, player: seat, reclaimed: true };
     }
@@ -159,6 +160,7 @@ class RoomManager {
     } else {
       player.connected = false;
       player.socketId = null;
+      player.left = true; // abbandono ESPLICITO (pulsante): mostra il codice per rientrare
     }
     if (room.players.every((p) => !p.connected)) {
       room.emptySince = Date.now();
@@ -173,6 +175,7 @@ class RoomManager {
     const player = room.players.find((p) => p.token === token);
     if (!player) return { error: 'Sessione non valida per questo tavolo.' };
     player.connected = true;
+    player.left = false;
     room.emptySince = null;
     return { room, player };
   }

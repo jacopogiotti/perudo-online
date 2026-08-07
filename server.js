@@ -58,6 +58,8 @@ function roomStatePayload(room) {
     hostId: room.hostId,
     paused: room.status === 'playing' && absent.length > 0,
     waitingFor: absent.map((p) => p.name),
+    leftPlayers: absent.filter((p) => p.left).map((p) => p.name),
+    disconnectedPlayers: absent.filter((p) => !p.left).map((p) => p.name),
     players,
     game: gameState
       ? {
