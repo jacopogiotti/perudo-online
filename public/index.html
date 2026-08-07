@@ -1,0 +1,166 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <meta name="theme-color" content="#0f1226" />
+    <title>Perudo — dadi & bluff</title>
+    <link rel="stylesheet" href="styles.css" />
+    <link
+      rel="icon"
+      href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🎲</text></svg>"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <!-- ============ HOME ============ -->
+      <section id="screen-home" class="screen active">
+        <header class="brand">
+          <div class="brand-dice">🎲</div>
+          <h1>Perudo</h1>
+          <p class="tagline">Dadi, azzardo e bluff. L'ultimo con un dado vince.</p>
+        </header>
+
+        <div class="card">
+          <h2>Crea un tavolo</h2>
+          <label for="host-name">Il tuo nome</label>
+          <input id="host-name" type="text" maxlength="20" placeholder="Es. Jacopo" autocomplete="off" />
+          <label for="dice-count">Dadi per giocatore</label>
+          <select id="dice-count">
+            <option value="1">1 dado</option>
+            <option value="2">2 dadi</option>
+            <option value="3">3 dadi</option>
+            <option value="4">4 dadi</option>
+            <option value="5" selected>5 dadi</option>
+          </select>
+          <button id="btn-create" class="primary">Crea tavolo</button>
+        </div>
+
+        <div class="divider"><span>oppure</span></div>
+
+        <div class="card">
+          <h2>Unisciti a un tavolo</h2>
+          <label for="join-code">Codice tavolo</label>
+          <input
+            id="join-code"
+            type="text"
+            maxlength="4"
+            placeholder="ABCD"
+            autocomplete="off"
+            autocapitalize="characters"
+            class="code-input"
+          />
+          <label for="join-name">Il tuo nome</label>
+          <input id="join-name" type="text" maxlength="20" placeholder="Es. Marco" autocomplete="off" />
+          <button id="btn-join" class="primary">Entra</button>
+        </div>
+      </section>
+
+      <!-- ============ LOBBY ============ -->
+      <section id="screen-lobby" class="screen">
+        <header class="lobby-head">
+          <p class="muted">Codice tavolo</p>
+          <div class="room-code" id="lobby-code">----</div>
+          <button id="btn-share" class="ghost">📋 Copia link invito</button>
+        </header>
+
+        <div class="card">
+          <div class="row-between">
+            <h2>Giocatori</h2>
+            <span class="muted" id="lobby-count"></span>
+          </div>
+          <ul id="lobby-players" class="players-list"></ul>
+        </div>
+
+        <div id="lobby-host-controls" class="card hidden">
+          <p class="muted" id="lobby-dice-info"></p>
+          <button id="btn-start" class="primary">Avvia partita</button>
+          <p class="hint" id="start-hint"></p>
+        </div>
+        <div id="lobby-guest-note" class="card hidden">
+          <p class="muted">In attesa che l'host avvii la partita…</p>
+        </div>
+      </section>
+
+      <!-- ============ GIOCO ============ -->
+      <section id="screen-game" class="screen">
+        <header class="game-head">
+          <div>
+            <span class="muted">Round</span>
+            <span id="game-round" class="round-num">1</span>
+          </div>
+          <div class="room-code small" id="game-code">----</div>
+        </header>
+
+        <div id="players-table" class="players-table"></div>
+
+        <div id="rolls-banner" class="rolls-banner hidden">
+          <span class="spinner"></span>
+          <span id="rolls-text">In attesa dei lanci…</span>
+        </div>
+
+        <div id="current-bid" class="current-bid">
+          <span class="muted">Ultima dichiarazione</span>
+          <div id="bid-display" class="bid-display">—</div>
+        </div>
+
+        <div class="my-dice-wrap">
+          <p class="muted" id="my-dice-label">I tuoi dadi</p>
+          <div id="my-dice" class="my-dice"></div>
+        </div>
+
+        <div id="controls" class="controls hidden">
+          <p class="controls-title" id="controls-title">Tocca a te!</p>
+          <div class="bid-builder">
+            <div class="stepper">
+              <button type="button" id="qty-minus" aria-label="meno">−</button>
+              <div class="stepper-val"><span id="qty-val">1</span><small>quantità</small></div>
+              <button type="button" id="qty-plus" aria-label="più">+</button>
+            </div>
+            <div class="face-picker" id="face-picker"></div>
+          </div>
+          <div class="action-buttons">
+            <button id="btn-bid" class="primary">Rilancia</button>
+            <button id="btn-doubt" class="danger">Dubito!</button>
+          </div>
+        </div>
+        <div id="waiting-turn" class="waiting hidden">
+          <span class="spinner"></span> <span id="waiting-text">In attesa…</span>
+        </div>
+      </section>
+
+      <!-- ============ CHAT ============ -->
+      <button id="chat-toggle" class="chat-toggle hidden" aria-label="Chat">
+        💬<span id="chat-badge" class="chat-badge hidden">0</span>
+      </button>
+      <div id="chat-panel" class="chat-panel hidden">
+        <div class="chat-head">
+          <span>💬 Chat del tavolo</span>
+          <button id="chat-close" class="chat-close" aria-label="Chiudi">✕</button>
+        </div>
+        <div id="chat-messages" class="chat-messages"></div>
+        <form id="chat-form" class="chat-form" autocomplete="off">
+          <input id="chat-input" type="text" maxlength="300" placeholder="Scrivi qualcosa… (bluffa!)" />
+          <button type="submit" class="chat-send">Invia</button>
+        </form>
+      </div>
+      <div id="chat-pop" class="chat-pop hidden"></div>
+
+      <!-- ============ OVERLAY RIVELAZIONE / FINE ============ -->
+      <div id="overlay" class="overlay hidden">
+        <div class="overlay-card">
+          <h2 id="overlay-title"></h2>
+          <p id="overlay-sub" class="overlay-sub"></p>
+          <div id="overlay-reveal" class="overlay-reveal"></div>
+          <p id="overlay-countdown" class="muted"></p>
+          <button id="overlay-btn" class="primary hidden">Torna alla home</button>
+        </div>
+      </div>
+
+      <div id="toast" class="toast hidden"></div>
+    </div>
+
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="client.js"></script>
+  </body>
+</html>

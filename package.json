@@ -1,0 +1,18 @@
+{
+  "name": "perudo-online",
+  "version": "1.0.0",
+  "description": "Perudo (gioco di dadi e bluff) multiplayer online — un host crea un tavolo e condivide un link agli amici.",
+  "type": "commonjs",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "socket.io": "^4.7.5"
+  }
+}
