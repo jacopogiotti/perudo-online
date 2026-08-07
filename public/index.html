@@ -76,9 +76,11 @@
           <p class="muted" id="lobby-dice-info"></p>
           <button id="btn-start" class="primary">Avvia partita</button>
           <p class="hint" id="start-hint"></p>
+          <button id="btn-close-lobby" class="ghost danger-ghost">Chiudi tavolo</button>
         </div>
         <div id="lobby-guest-note" class="card hidden">
           <p class="muted">In attesa che l'host avvii la partita…</p>
+          <button id="btn-leave-lobby" class="ghost danger-ghost">Esci dal tavolo</button>
         </div>
       </section>
 
@@ -92,6 +94,7 @@
           <div class="head-right">
             <div class="room-code small" id="game-code">----</div>
             <button id="btn-end-game" class="end-btn hidden">⏹ Termina</button>
+            <button id="btn-leave" class="end-btn hidden">🚪 Abbandona</button>
           </div>
         </header>
 
@@ -157,6 +160,16 @@
           <div id="overlay-reveal" class="overlay-reveal"></div>
           <p id="overlay-countdown" class="muted"></p>
           <button id="overlay-btn" class="primary hidden">Torna alla home</button>
+        </div>
+      </div>
+
+      <!-- ============ OVERLAY PAUSA ============ -->
+      <div id="pause-overlay" class="overlay hidden">
+        <div class="overlay-card">
+          <div class="pause-icon">⏸️</div>
+          <h2>Partita in pausa</h2>
+          <p id="pause-sub" class="overlay-sub"></p>
+          <p class="muted">Riprende appena la persona rientra (basta che entri col suo nome).</p>
         </div>
       </div>
 

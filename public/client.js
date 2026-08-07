@@ -187,8 +187,10 @@ function renderGame(room) {
   const g = room.game;
   $('#game-round').textContent = g.roundNumber;
 
-  // Pulsante "Termina partita": solo per l'host.
-  $('#btn-end-game').classList.toggle('hidden', !(state.me && state.me.isHost));
+  // Header: l'host vede "Termina" (chiude il tavolo), il guest "Abbandona".
+  const isHost = !!(state.me && state.me.isHost);
+  $('#btn-end-game').classList.toggle('hidden', !isHost);
+  $('#btn-leave').classList.toggle('hidden', isHost);
 
   // Nuovo round: azzera il selettore alla "puntata consigliata" 1 × valore 1.
   if (state.lastRoundSeen !== g.roundNumber) {
@@ -414,12 +416,26 @@ $('#btn-doubt').addEventListener('click', () => {
   });
 });
 
-$('#btn-end-game').addEventListener('click', () => {
-  if (!window.confirm('Terminare la partita per tutti? Tornerete alla lobby.')) return;
+function doEndGame() {
+  if (!window.confirm('Chiudere il tavolo per tutti? La partita finisce e tutti tornano alla schermata iniziale.')) return;
   socket.emit('endGame', {}, (res) => {
     if (!res.ok) toast(res.error);
   });
-});
+}
+function doLeaveTable(confirmMsg) {
+  if (confirmMsg && !window.confirm(confirmMsg)) return;
+  socket.emit('leaveTable', {}, () => {
+    clearSession();
+    location.href = location.pathname;
+  });
+}
+
+$('#btn-end-game').addEventListener('click', doEndGame);
+$('#btn-close-lobby').addEventListener('click', doEndGame);
+$('#btn-leave').addEventListener('click', () =>
+  doLeaveTable('Vuoi abbandonare il tavolo? La partita andrà in pausa finché non rientri (con lo stesso nome).')
+);
+$('#btn-leave-lobby').addEventListener('click', () => doLeaveTable(null));
 
 // ---------- OVERLAY (rivelazione / fine) ----------
 let countdownTimer = null;
@@ -525,6 +541,17 @@ function hideOverlay() {
   state.revealKey = null;
 }
 
+function showPause(room) {
+  const names = (room.waitingFor || []).map(escapeHtml).join(', ');
+  $('#pause-sub').innerHTML = names
+    ? `In attesa del rientro di <strong>${names}</strong>.`
+    : 'In attesa del rientro di un giocatore.';
+  $('#pause-overlay').classList.remove('hidden');
+}
+function hidePause() {
+  $('#pause-overlay').classList.add('hidden');
+}
+
 // ---------- CHAT ----------
 function addChatMsg(m, opts) {
   const mine = m.playerId === state.me.playerId;
@@ -616,16 +643,24 @@ socket.on('state', (room) => {
 
   if (room.status === 'lobby') {
     hideOverlay();
+    hidePause();
     renderLobby(room);
     showScreen('screen-lobby');
   } else {
     renderLobby(room);
     showScreen('screen-game');
     renderGame(room);
-    if (room.game && (room.game.phase === 'reveal' || room.game.phase === 'gameOver')) {
-      showReveal(room);
-    } else {
+    if (room.paused) {
+      // La pausa ha la precedenza su qualsiasi altro overlay.
       hideOverlay();
+      showPause(room);
+    } else {
+      hidePause();
+      if (room.game && (room.game.phase === 'reveal' || room.game.phase === 'gameOver')) {
+        showReveal(room);
+      } else {
+        hideOverlay();
+      }
     }
   }
 });
@@ -647,8 +682,10 @@ socket.on('kicked', () => {
   setTimeout(() => (location.href = location.pathname), 1200);
 });
 
-socket.on('gameEnded', () => {
-  toast("Partita terminata dall'host — tornate alla lobby.");
+socket.on('tableClosed', () => {
+  clearSession();
+  toast("L'host ha chiuso il tavolo.");
+  setTimeout(() => (location.href = location.pathname), 1200);
 });
 
 socket.on('connect', () => {

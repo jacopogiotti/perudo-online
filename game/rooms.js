@@ -98,14 +98,35 @@ class RoomManager {
   joinRoom(code, name) {
     const room = this.getRoom(code);
     if (!room) return { error: 'Tavolo non trovato. Controlla il codice.' };
+    const cleanName = sanitizeName(name);
+    if (!cleanName) return { error: 'Inserisci un nome.' };
+
+    // Partita in corso: si può entrare SOLO subentrando a un giocatore assente
+    // con lo stesso nome (rientro dopo un abbandono/disconnessione).
+    if (room.status === 'playing') {
+      const seat = room.players.find(
+        (p) => p.name.toLowerCase() === cleanName.toLowerCase()
+      );
+      if (!seat) {
+        return {
+          error: 'Partita in corso: puoi entrare solo col nome di chi si è disconnesso.',
+        };
+      }
+      if (seat.connected) {
+        return { error: 'Questo giocatore è già presente al tavolo.' };
+      }
+      seat.token = newToken(); // nuova sessione per chi subentra
+      seat.connected = true;
+      room.emptySince = null;
+      return { room, player: seat, reclaimed: true };
+    }
+
     if (room.status !== 'lobby') {
-      return { error: 'La partita è già iniziata.' };
+      return { error: 'La partita non è più disponibile.' };
     }
     if (room.players.length >= MAX_PLAYERS) {
       return { error: `Tavolo pieno (max ${MAX_PLAYERS} giocatori).` };
     }
-    const cleanName = sanitizeName(name);
-    if (!cleanName) return { error: 'Inserisci un nome.' };
     if (room.players.some((p) => p.name.toLowerCase() === cleanName.toLowerCase())) {
       return { error: 'Nome già in uso a questo tavolo.' };
     }
@@ -118,6 +139,30 @@ class RoomManager {
     };
     room.players.push(player);
     room.emptySince = null;
+    return { room, player };
+  }
+
+  /** Elimina completamente un tavolo (usato dall'host con "Termina"). */
+  deleteRoom(code) {
+    this.rooms.delete(String(code || '').toUpperCase());
+  }
+
+  /** Il giocatore lascia il tavolo. In lobby viene rimosso; in partita il suo
+   *  posto resta libero (assente) così qualcuno può subentrare per nome. */
+  leaveTable(code, playerId) {
+    const room = this.getRoom(code);
+    if (!room) return { error: 'Tavolo non trovato.' };
+    const player = room.players.find((p) => p.id === playerId);
+    if (!player) return { error: 'Giocatore non trovato.' };
+    if (room.status === 'lobby') {
+      room.players = room.players.filter((p) => p.id !== playerId);
+    } else {
+      player.connected = false;
+      player.socketId = null;
+    }
+    if (room.players.every((p) => !p.connected)) {
+      room.emptySince = Date.now();
+    }
     return { room, player };
   }
 

@@ -48,6 +48,7 @@ function roomStatePayload(room) {
       dice: g ? g.dice : null, // valorizzato solo in reveal/gameOver
     };
   });
+  const absent = absentPlayers(room);
   return {
     code: room.code,
     status: room.status,
@@ -55,6 +56,8 @@ function roomStatePayload(room) {
     maxPlayers: MAX_PLAYERS,
     minPlayers: MIN_PLAYERS,
     hostId: room.hostId,
+    paused: room.status === 'playing' && absent.length > 0,
+    waitingFor: absent.map((p) => p.name),
     players,
     game: gameState
       ? {
@@ -110,6 +113,30 @@ function allRolled(room) {
   return need.length > 0 && need.every((id) => rolled.has(id));
 }
 
+/** Giocatori ancora VIVI ma assenti (disconnessi/abbandonati): mettono in pausa. */
+function absentPlayers(room) {
+  if (!room.game || room.status !== 'playing') return [];
+  const gs = room.game.publicState();
+  const aliveIds = new Set(gs.players.filter((p) => p.alive).map((p) => p.id));
+  return room.players.filter((p) => aliveIds.has(p.id) && !p.connected);
+}
+/** La partita è in pausa se manca all'appello un giocatore vivo. */
+function isPaused(room) {
+  return room.status === 'playing' && absentPlayers(room).length > 0;
+}
+/** Se il round precedente era in rivelazione e la pausa l'ha congelato, riprende. */
+function maybeResume(room) {
+  if (
+    room.game &&
+    !isPaused(room) &&
+    room._revealPending &&
+    room.game.phase === 'reveal'
+  ) {
+    room._revealPending = false;
+    scheduleNextRound(room);
+  }
+}
+
 /** Invia a tutti lo stato pubblico e a ciascuno i propri dadi privati. */
 function broadcastRoom(room) {
   const payload = roomStatePayload(room);
@@ -129,12 +156,16 @@ function scheduleNextRound(room) {
   if (room._revealTimer) return;
   room._revealTimer = setTimeout(() => {
     room._revealTimer = null;
-    if (room.game && room.game.phase === 'reveal') {
-      room.game.startNextRound();
-      room.readyNext = new Set();
-      room.rolled = new Set();
-      broadcastRoom(room);
+    if (!room.game || room.game.phase !== 'reveal') return;
+    // Se qualcuno è assente, congela: riprenderà al rientro (maybeResume).
+    if (isPaused(room)) {
+      room._revealPending = true;
+      return;
     }
+    room.game.startNextRound();
+    room.readyNext = new Set();
+    room.rolled = new Set();
+    broadcastRoom(room);
   }, REVEAL_MS);
   room._revealTimer.unref && room._revealTimer.unref();
 }
@@ -164,9 +195,21 @@ io.on('connection', (socket) => {
     player.socketId = socket.id;
     socket.data = { code: room.code, playerId: player.id };
     socket.join(room.code);
-    ack(cb, { ok: true, code: room.code, playerId: player.id, token: player.token });
+    ack(cb, {
+      ok: true,
+      code: room.code,
+      playerId: player.id,
+      token: player.token,
+      isHost: player.isHost,
+    });
     socket.emit('chatHistory', room.chat || []);
+    // Se subentra a un posto vacante, la partita può riprendere.
+    if (res.reclaimed) maybeResume(room);
     broadcastRoom(room);
+    // Ai rientri in partita reinvio i dadi privati durante il bidding.
+    if (res.reclaimed && room.game && room.game.phase === 'bidding') {
+      socket.emit('yourDice', { dice: room.game.diceFor(player.id) });
+    }
   });
 
   // --- Reconnect (dopo refresh/disconnessione) ---
@@ -180,6 +223,8 @@ io.on('connection', (socket) => {
     ack(cb, { ok: true, code: room.code, playerId: player.id, isHost: player.isHost });
     // Reinvio subito lo stato + i dadi privati + lo storico chat a chi rientra.
     socket.emit('chatHistory', room.chat || []);
+    maybeResume(room);
+    broadcastRoom(room);
     socket.emit('state', roomStatePayload(room));
     if (room.game && room.game.phase === 'bidding') {
       socket.emit('yourDice', { dice: room.game.diceFor(player.id) });
@@ -200,6 +245,9 @@ io.on('connection', (socket) => {
     const ctx = socket.data || {};
     const room = manager.getRoom(ctx.code);
     if (!room || !room.game) return ack(cb, { ok: false, error: 'Partita non attiva.' });
+    if (isPaused(room)) {
+      return ack(cb, { ok: false, error: 'Partita in pausa: si attende il rientro di un giocatore.' });
+    }
     if (!allRolled(room)) {
       return ack(cb, { ok: false, error: 'Aspetta che tutti lancino i dadi.' });
     }
@@ -214,6 +262,9 @@ io.on('connection', (socket) => {
     const ctx = socket.data || {};
     const room = manager.getRoom(ctx.code);
     if (!room || !room.game) return ack(cb, { ok: false, error: 'Partita non attiva.' });
+    if (isPaused(room)) {
+      return ack(cb, { ok: false, error: 'Partita in pausa: si attende il rientro di un giocatore.' });
+    }
     if (!allRolled(room)) {
       return ack(cb, { ok: false, error: 'Aspetta che tutti lancino i dadi.' });
     }
@@ -239,6 +290,7 @@ io.on('connection', (socket) => {
     if (!room || !room.game || room.game.phase !== 'reveal') {
       return ack(cb, { ok: false });
     }
+    if (isPaused(room)) return ack(cb, { ok: false });
     if (!room.readyNext) room.readyNext = new Set();
     room.readyNext.add(ctx.playerId);
     ack(cb, { ok: true });
@@ -264,6 +316,7 @@ io.on('connection', (socket) => {
     if (!room || !room.game || room.game.phase !== 'bidding') {
       return ack(cb, { ok: false });
     }
+    if (isPaused(room)) return ack(cb, { ok: false });
     if (!room.rolled) room.rolled = new Set();
     room.rolled.add(ctx.playerId);
     ack(cb, { ok: true });
@@ -287,29 +340,37 @@ io.on('connection', (socket) => {
     io.to(room.code).emit('chatMessage', msg);
   });
 
-  // --- Termina partita (host): riporta il tavolo alla lobby ---
+  // --- Termina (host): chiude ed elimina completamente il tavolo ---
   socket.on('endGame', (_data, cb) => {
     const ctx = socket.data || {};
     const room = manager.getRoom(ctx.code);
     if (!room) return ack(cb, { ok: false, error: 'Tavolo non trovato.' });
     if (ctx.playerId !== room.hostId) {
-      return ack(cb, { ok: false, error: 'Solo l\'host può terminare la partita.' });
+      return ack(cb, { ok: false, error: 'Solo l\'host può chiudere il tavolo.' });
     }
-    if (room.status !== 'playing') {
-      return ack(cb, { ok: false, error: 'Nessuna partita in corso.' });
-    }
-    // Reset alla lobby, mantenendo i giocatori (pronti per una nuova partita).
     if (room._revealTimer) {
       clearTimeout(room._revealTimer);
       room._revealTimer = null;
     }
-    room.game = null;
-    room.status = 'lobby';
-    room.rolled = new Set();
-    room.readyNext = new Set();
     ack(cb, { ok: true });
-    io.to(room.code).emit('gameEnded');
-    broadcastRoom(room);
+    // Avvisa tutti (guest compresi) che il tavolo è chiuso, poi lo elimina.
+    io.to(room.code).emit('tableClosed');
+    manager.deleteRoom(room.code);
+  });
+
+  // --- Abbandona (guest): lascia il tavolo; in partita mette in pausa ---
+  socket.on('leaveTable', (_data, cb) => {
+    const ctx = socket.data || {};
+    const room = manager.getRoom(ctx.code);
+    if (!room) return ack(cb, { ok: true });
+    if (ctx.playerId === room.hostId) {
+      return ack(cb, { ok: false, error: 'L\'host usa "Termina" per chiudere il tavolo.' });
+    }
+    const res = manager.leaveTable(ctx.code, ctx.playerId);
+    socket.leave(room.code);
+    socket.data = {};
+    ack(cb, { ok: true });
+    if (!res.error) broadcastRoom(room);
   });
 
   // --- Espulsione giocatore (host, solo in lobby) ---

@@ -294,6 +294,16 @@ button:disabled {
 .end-btn:active {
   background: rgba(255, 93, 115, 0.15);
 }
+.danger-ghost {
+  width: 100%;
+  margin-top: 12px;
+  background: transparent;
+  border: 1px solid var(--danger);
+  color: var(--danger);
+}
+.pause-icon {
+  font-size: 44px;
+}
 .round-num {
   font-size: 22px;
   font-weight: 800;
