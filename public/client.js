@@ -275,9 +275,11 @@ function renderGame(room) {
   // Dichiarazione corrente
   const bidEl = $('#bid-display');
   if (g.currentBid) {
+    bidEl.className = 'bid-display has-bid';
     bidEl.innerHTML = `<span class="bid-x">${g.currentBid.quantity} ×</span> ${dieEl(g.currentBid.face, 'die-sm')}`;
   } else {
     const starter = (room.players.find((p) => p.id === g.starterPlayerId) || {}).name;
+    bidEl.className = 'bid-display no-bid';
     bidEl.innerHTML = starter
       ? `nessuna, apre <strong>${escapeHtml(starter)}</strong> il round`
       : 'nessuna';
