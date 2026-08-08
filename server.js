@@ -401,8 +401,10 @@ io.on('connection', (socket) => {
     if (!ctx.code) return;
     const room = manager.getRoom(ctx.code);
     if (!room) return;
-    manager.markDisconnected(ctx.code, ctx.playerId);
-    broadcastRoom(room);
+    // Passa il socket.id: se il giocatore ha già una connessione più recente,
+    // questo disconnect "vecchio" viene ignorato e la partita non si ri-blocca.
+    const changed = manager.markDisconnected(ctx.code, ctx.playerId, socket.id);
+    if (changed) broadcastRoom(room);
   });
 });
 

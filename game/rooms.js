@@ -199,21 +199,31 @@ class RoomManager {
     return { room };
   }
 
-  /** Marca un giocatore come disconnesso (senza rimuoverlo: puo' rientrare). */
-  markDisconnected(code, playerId) {
+  /** Marca un giocatore come disconnesso (senza rimuoverlo: puo' rientrare).
+   *  Se `socketId` è passato e NON corrisponde al socket attuale del giocatore,
+   *  significa che è un disconnect "fantasma" di una connessione ormai vecchia
+   *  (il giocatore si è già ricollegato): va ignorato. Ritorna true se ha
+   *  effettivamente cambiato lo stato. */
+  markDisconnected(code, playerId, socketId) {
     const room = this.getRoom(code);
-    if (!room) return;
+    if (!room) return false;
     const player = room.players.find((p) => p.id === playerId);
-    if (player) player.connected = false;
+    if (!player) return false;
+    if (socketId && player.socketId && player.socketId !== socketId) {
+      return false; // disconnect obsoleto: il giocatore ha già una nuova connessione
+    }
+
+    player.connected = false;
 
     // In lobby, un giocatore non-host disconnesso viene rimosso dalla lista.
-    if (room.status === 'lobby' && player && !player.isHost) {
+    if (room.status === 'lobby' && !player.isHost) {
       room.players = room.players.filter((p) => p.id !== playerId);
     }
 
     if (room.players.every((p) => !p.connected)) {
       room.emptySince = Date.now();
     }
+    return true;
   }
 
   /** Rimuove le stanze vuote scadute (chiamata periodica). */

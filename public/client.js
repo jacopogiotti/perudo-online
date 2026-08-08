@@ -33,7 +33,13 @@ function setDieFace(el, v) {
   el.innerHTML = pipsHtml(v);
 }
 
-const socket = io();
+const socket = io({
+  reconnection: true,
+  reconnectionAttempts: Infinity,
+  reconnectionDelay: 500,
+  reconnectionDelayMax: 3000,
+  timeout: 20000,
+});
 
 const state = {
   me: null, // { code, playerId, isHost, token }
@@ -758,6 +764,19 @@ function safeParse(s) {
     return null;
   }
 }
+
+// Riconnessione PROATTIVA: quando l'app torna in primo piano, riprende il focus
+// o la rete torna disponibile, riapriamo subito il socket se è caduto — senza
+// aspettare i timeout. Il gestore 'connect' poi ci ri-registra al tavolo.
+function ensureConnected() {
+  if (!socket.connected) socket.connect();
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') ensureConnected();
+});
+window.addEventListener('focus', ensureConnected);
+window.addEventListener('online', ensureConnected);
+window.addEventListener('pageshow', ensureConnected);
 
 // ---------- avvio: prefill codice da ?room= ----------
 (function initFromUrl() {
