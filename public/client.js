@@ -277,7 +277,10 @@ function renderGame(room) {
   if (g.currentBid) {
     bidEl.innerHTML = `<span class="bid-x">${g.currentBid.quantity} ×</span> ${dieEl(g.currentBid.face, 'die-sm')}`;
   } else {
-    bidEl.textContent = '— nessuna, apri tu il round —';
+    const starter = (room.players.find((p) => p.id === g.starterPlayerId) || {}).name;
+    bidEl.innerHTML = starter
+      ? `nessuna, apre <strong>${escapeHtml(starter)}</strong> il round`
+      : 'nessuna';
   }
 
   renderMyDice(room);
