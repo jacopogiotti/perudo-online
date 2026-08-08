@@ -85,6 +85,7 @@ class RoomManager {
       hostId: host.id,
       emptySince: null,
       rolled: new Set(), // chi ha "lanciato" i dadi nel round corrente
+      bidLog: [], // storico dichiarazioni del round corrente
       chat: [], // storico messaggi
     };
     this.rooms.set(code, room);
@@ -195,6 +196,7 @@ class RoomManager {
     const seats = room.players.map((p) => ({ id: p.id, name: p.name }));
     room.game = new Game(seats, room.dicePerPlayer);
     room.rolled = new Set(); // nuovo round: nessuno ha ancora lanciato
+    room.bidLog = []; // storico dichiarazioni azzerato
     room.status = 'playing';
     return { room };
   }

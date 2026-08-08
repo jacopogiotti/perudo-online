@@ -284,6 +284,7 @@ function renderGame(room) {
   }
 
   renderMyDice(room);
+  if (!$('#log-panel').classList.contains('hidden')) renderLog(room);
 
   // Controlli turno
   const iRolled = state.rolledRound === g.roundNumber;
@@ -643,6 +644,7 @@ function showChatPop(m) {
 }
 
 function openChat() {
+  closeLog();
   state.chatOpen = true;
   state.unread = 0;
   updateChatBadge();
@@ -656,6 +658,40 @@ function closeChat() {
   state.chatOpen = false;
   $('#chat-panel').classList.add('hidden');
 }
+
+// ---------- STORICO DICHIARAZIONI ----------
+function renderLog(room) {
+  const g = room.game;
+  const log = (g && g.bidLog) || [];
+  const list = $('#log-list');
+  if (!log.length) {
+    list.innerHTML = '<p class="log-empty">Ancora nessuna dichiarazione in questo round.</p>';
+    return;
+  }
+  list.innerHTML = log
+    .map(
+      (b, i) => `
+      <div class="log-row">
+        <span class="log-num">${i + 1}</span>
+        <span class="log-name">${escapeHtml(b.name)}</span>
+        <span class="log-bid">${b.quantity} × ${dieEl(b.face, 'die-xs')}</span>
+      </div>`
+    )
+    .join('');
+  list.scrollTop = list.scrollHeight;
+}
+function openLog() {
+  closeChat();
+  $('#log-panel').classList.remove('hidden');
+  if (state.room) renderLog(state.room);
+}
+function closeLog() {
+  $('#log-panel').classList.add('hidden');
+}
+$('#log-toggle').addEventListener('click', () =>
+  $('#log-panel').classList.contains('hidden') ? openLog() : closeLog()
+);
+$('#log-close').addEventListener('click', closeLog);
 
 $('#chat-toggle').addEventListener('click', () => (state.chatOpen ? closeChat() : openChat()));
 $('#chat-close').addEventListener('click', closeChat);
@@ -681,9 +717,13 @@ socket.on('state', (room) => {
   state.room = room;
   const inGame = room.status === 'playing' || room.status === 'finished';
 
-  // Mostra il pulsante chat solo dentro la partita.
+  // Mostra i pulsanti chat e storico solo dentro la partita.
   $('#chat-toggle').classList.toggle('hidden', !inGame);
-  if (!inGame) closeChat();
+  $('#log-toggle').classList.toggle('hidden', !inGame);
+  if (!inGame) {
+    closeChat();
+    closeLog();
+  }
 
   if (room.status === 'lobby') {
     hideOverlay();

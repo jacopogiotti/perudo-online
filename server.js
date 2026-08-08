@@ -72,6 +72,7 @@ function roomStatePayload(room) {
           lastResult: room.game.lastResult || null,
           ready: readyInfo(room, gameState),
           rolling: rollingInfo(room, gameState),
+          bidLog: room.bidLog || [],
         }
       : null,
   };
@@ -167,6 +168,7 @@ function scheduleNextRound(room) {
     room.game.startNextRound();
     room.readyNext = new Set();
     room.rolled = new Set();
+    room.bidLog = [];
     broadcastRoom(room);
   }, REVEAL_MS);
   room._revealTimer.unref && room._revealTimer.unref();
@@ -255,6 +257,10 @@ io.on('connection', (socket) => {
     }
     const res = room.game.placeBid(ctx.playerId, quantity, face);
     if (!res.ok) return ack(cb, { ok: false, error: res.reason });
+    // Registra la dichiarazione nello storico del round.
+    if (!room.bidLog) room.bidLog = [];
+    const p = room.players.find((pl) => pl.id === ctx.playerId);
+    room.bidLog.push({ name: p ? p.name : '?', quantity: quantity | 0, face: face | 0 });
     ack(cb, { ok: true });
     broadcastRoom(room);
   });
@@ -307,6 +313,7 @@ io.on('connection', (socket) => {
       room.game.startNextRound();
       room.readyNext = new Set();
       room.rolled = new Set();
+      room.bidLog = [];
     }
     broadcastRoom(room);
   });
