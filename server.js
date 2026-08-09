@@ -78,12 +78,21 @@ function roomStatePayload(room) {
   };
 }
 
+/** Giocatori ATTIVI = ancora in gioco (vivi) e connessi. Gli eliminati e i
+ *  disconnessi non contano per avanzamento round e conteggio "pronti". */
+function activePlayerIds(room) {
+  if (!room.game) return room.players.filter((p) => p.connected).map((p) => p.id);
+  const gs = room.game.publicState();
+  const aliveIds = new Set(gs.players.filter((p) => p.alive).map((p) => p.id));
+  return room.players.filter((p) => p.connected && aliveIds.has(p.id)).map((p) => p.id);
+}
+
 /** Info sui giocatori "pronti" a proseguire (solo durante la rivelazione). */
 function readyInfo(room, gameState) {
   if (!gameState || gameState.phase !== 'reveal') return null;
-  const connectedIds = room.players.filter((p) => p.connected).map((p) => p.id);
-  const readyIds = [...(room.readyNext || [])].filter((id) => connectedIds.includes(id));
-  return { readyIds, total: connectedIds.length };
+  const active = activePlayerIds(room);
+  const readyIds = [...(room.readyNext || [])].filter((id) => active.includes(id));
+  return { readyIds, total: active.length };
 }
 
 /** Elenco dei giocatori che devono lanciare: vivi e connessi. */
@@ -303,8 +312,9 @@ io.on('connection', (socket) => {
     room.readyNext.add(ctx.playerId);
     ack(cb, { ok: true });
 
-    const connectedIds = room.players.filter((p) => p.connected).map((p) => p.id);
-    const allReady = connectedIds.length > 0 && connectedIds.every((id) => room.readyNext.has(id));
+    // Contano solo i giocatori attivi (vivi e connessi): gli eliminati no.
+    const active = activePlayerIds(room);
+    const allReady = active.length > 0 && active.every((id) => room.readyNext.has(id));
     if (allReady) {
       if (room._revealTimer) {
         clearTimeout(room._revealTimer);

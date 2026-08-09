@@ -508,15 +508,22 @@ function showReveal(room) {
     };
   } else {
     const ready = g.ready || { readyIds: [], total: 0 };
-    const iAmReady = ready.readyIds.includes(state.me.playerId);
-    btn.classList.remove('hidden');
-    btn.textContent = iAmReady ? '✓ Pronto' : 'Procedi ▶';
-    btn.disabled = iAmReady;
-    btn.onclick = () => {
-      socket.emit('readyNext', {}, () => {});
-      btn.disabled = true;
-      btn.textContent = '✓ Pronto';
-    };
+    const meP = room.players.find((p) => p.id === state.me.playerId);
+    const meEliminated = meP && !meP.alive;
+    if (meEliminated) {
+      // Spettatore: non deve premere nulla, aspetta i giocatori attivi.
+      btn.classList.add('hidden');
+    } else {
+      const iAmReady = ready.readyIds.includes(state.me.playerId);
+      btn.classList.remove('hidden');
+      btn.textContent = iAmReady ? '✓ Pronto' : 'Procedi ▶';
+      btn.disabled = iAmReady;
+      btn.onclick = () => {
+        socket.emit('readyNext', {}, () => {});
+        btn.disabled = true;
+        btn.textContent = '✓ Pronto';
+      };
+    }
 
     if (isNew) {
       clearInterval(countdownTimer);
