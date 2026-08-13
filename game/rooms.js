@@ -201,6 +201,32 @@ class RoomManager {
     return { room };
   }
 
+  /** Rivincita (host): nuova partita con i giocatori attualmente al tavolo. */
+  rematch(code, requesterId) {
+    const room = this.getRoom(code);
+    if (!room) return { error: 'Tavolo non trovato.' };
+    if (requesterId !== room.hostId) {
+      return { error: 'Solo l\'host può avviare la rivincita.' };
+    }
+    if (room.status !== 'finished') {
+      return { error: 'La partita non è ancora finita.' };
+    }
+    // Gioca la rivincita chi è al tavolo ora (i disconnessi restano fuori).
+    const active = room.players.filter((p) => p.connected);
+    if (active.length < MIN_PLAYERS) {
+      return { error: `Servono almeno ${MIN_PLAYERS} giocatori connessi.` };
+    }
+    room.players = active;
+    const seats = active.map((p) => ({ id: p.id, name: p.name }));
+    room.game = new Game(seats, room.dicePerPlayer);
+    room.rolled = new Set();
+    room.bidLog = [];
+    room.readyNext = new Set();
+    room._revealPending = false;
+    room.status = 'playing';
+    return { room };
+  }
+
   /** Marca un giocatore come disconnesso (senza rimuoverlo: puo' rientrare).
    *  Se `socketId` è passato e NON corrisponde al socket attuale del giocatore,
    *  significa che è un disconnect "fantasma" di una connessione ormai vecchia

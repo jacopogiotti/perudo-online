@@ -494,19 +494,34 @@ function showReveal(room) {
   });
 
   const btn = $('#overlay-btn');
+  const btn2 = $('#overlay-btn2');
   const cd = $('#overlay-countdown');
 
   if (gameOver) {
     clearInterval(countdownTimer);
-    cd.textContent = '';
+    const isHost = !!(state.me && state.me.isHost);
     btn.classList.remove('hidden');
     btn.disabled = false;
-    btn.textContent = 'Torna alla home';
-    btn.onclick = () => {
-      clearSession();
-      location.href = location.pathname;
-    };
+    if (isHost) {
+      // Host: sceglie tra rivincita e chiusura tavolo.
+      btn.className = 'primary';
+      btn.textContent = '🔁 Rivincita';
+      btn.onclick = () => socket.emit('rematch', {}, (res) => { if (!res.ok) toast(res.error); });
+      btn2.classList.remove('hidden');
+      btn2.className = 'danger-ghost';
+      btn2.textContent = '🚪 Chiudi tavolo';
+      btn2.onclick = doEndGame;
+      cd.textContent = '';
+    } else {
+      // Guest: può abbandonare, altrimenti aspetta la scelta dell'host.
+      btn.className = 'danger-ghost';
+      btn.textContent = '🚪 Abbandona';
+      btn.onclick = () => doLeaveTable(null);
+      btn2.classList.add('hidden');
+      cd.textContent = "In attesa che l'host scelga se fare la rivincita…";
+    }
   } else {
+    btn2.classList.add('hidden');
     const ready = g.ready || { readyIds: [], total: 0 };
     const meP = room.players.find((p) => p.id === state.me.playerId);
     const meEliminated = meP && !meP.alive;
@@ -516,6 +531,7 @@ function showReveal(room) {
     } else {
       const iAmReady = ready.readyIds.includes(state.me.playerId);
       btn.classList.remove('hidden');
+      btn.className = 'primary';
       btn.textContent = iAmReady ? '✓ Pronto' : 'Procedi ▶';
       btn.disabled = iAmReady;
       btn.onclick = () => {
@@ -560,6 +576,7 @@ function faceName(v) {
 
 function hideOverlay() {
   $('#overlay').classList.add('hidden');
+  $('#overlay-btn2').classList.add('hidden');
   clearInterval(countdownTimer);
   state.revealKey = null;
 }

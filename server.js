@@ -377,6 +377,15 @@ io.on('connection', (socket) => {
     manager.deleteRoom(room.code);
   });
 
+  // --- Rivincita (host): nuova partita con chi è al tavolo ---
+  socket.on('rematch', (_data, cb) => {
+    const ctx = socket.data || {};
+    const res = manager.rematch(ctx.code, ctx.playerId);
+    if (res.error) return ack(cb, { ok: false, error: res.error });
+    ack(cb, { ok: true });
+    broadcastRoom(res.room);
+  });
+
   // --- Abbandona (guest): lascia il tavolo; in partita mette in pausa ---
   socket.on('leaveTable', (_data, cb) => {
     const ctx = socket.data || {};
