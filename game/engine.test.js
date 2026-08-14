@@ -134,21 +134,39 @@ test('eliminazione a 0 dadi e vittoria dell\'ultimo rimasto', () => {
   assert.strictEqual(a.alive, false);
 });
 
-test('nuovo round: parte il giocatore DOPO lo starter precedente', () => {
+test('nuovo round: apre chi ha dubitato', () => {
+  const g = new Game(
+    [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }, { id: 'c', name: 'C' }, { id: 'd', name: 'D' }],
+    5,
+    { starterIndex: 0 }
+  );
+  assert.strictEqual(g.roundStarterIndex, 0); // apre A
+  // Rilanci crescenti validi: A, B, C; poi D dubita (D è il dubitante).
+  assert.strictEqual(g.placeBid('a', 1, 2).ok, true);
+  assert.strictEqual(g.placeBid('b', 1, 3).ok, true);
+  assert.strictEqual(g.placeBid('c', 1, 4).ok, true);
+  assert.strictEqual(g.challenge('d').ok, true);
+  assert.strictEqual(g.startNextRound().ok, true);
+  // Il round successivo lo apre D (chi ha dubitato), non "il dopo di A".
+  assert.strictEqual(g.currentPlayer().id, 'd');
+  assert.strictEqual(g.roundStarterIndex, 3);
+});
+
+test('nuovo round: se il dubitante è eliminato, apre il primo vivo dopo di lui', () => {
+  // 3 giocatori con 1 dado: A apre, dichiara il falso, B dubita e... la
+  // dichiarazione è VERA (nei dadi forzati) quindi B (dubitante) perde il suo
+  // unico dado ed è eliminato. Apre allora il primo vivo dopo B, cioè C.
   const g = new Game(
     [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }, { id: 'c', name: 'C' }],
-    3,
-    { starterIndex: 0, rng: diceRng([2, 2, 2, 5, 5, 5, 6, 6, 6, /*reroll*/ 1, 1, 1, 4, 4, 4, 6, 6, 5]) }
+    1,
+    { starterIndex: 0, rng: diceRng([3, 3, 5]) } // A=3, B=3, C=5 -> due 3 in tavola
   );
-  assert.strictEqual(g.roundStarterIndex, 0); // A
-  // A dichiara qualcosa di palesemente falso, B dubita.
-  assert.strictEqual(g.placeBid('a', 9, 1).ok, true);
+  assert.strictEqual(g.placeBid('a', 2, 3).ok, true); // "due da 3": vera (ce ne sono 2)
   assert.strictEqual(g.challenge('b').ok, true);
+  assert.strictEqual(g.lastResult.loserId, 'b');
   assert.strictEqual(g.phase, 'reveal');
   assert.strictEqual(g.startNextRound().ok, true);
-  // Starter del nuovo round = giocatore dopo A => B
-  assert.strictEqual(g.roundStarterIndex, 1);
-  assert.strictEqual(g.currentPlayer().id, 'b');
+  assert.strictEqual(g.currentPlayer().id, 'c'); // B eliminato -> apre C
 });
 
 test('stato pubblico non espone i dadi durante il bidding', () => {
