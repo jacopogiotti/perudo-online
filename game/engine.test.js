@@ -134,39 +134,39 @@ test('eliminazione a 0 dadi e vittoria dell\'ultimo rimasto', () => {
   assert.strictEqual(a.alive, false);
 });
 
-test('nuovo round: apre chi ha dubitato', () => {
+test('nuovo round: apre chi ha perso il dado (il dichiarante che ha bluffato)', () => {
+  // Nessun 6 in tavola: la dichiarazione sui 6 sarà falsa e perde il dichiarante.
   const g = new Game(
     [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }, { id: 'c', name: 'C' }, { id: 'd', name: 'D' }],
     5,
-    { starterIndex: 0 }
+    { starterIndex: 0, rng: diceRng(Array(20).fill(1)) }
   );
   assert.strictEqual(g.roundStarterIndex, 0); // apre A
-  // Rilanci crescenti validi: A, B, C; poi D dubita (D è il dubitante).
   assert.strictEqual(g.placeBid('a', 1, 2).ok, true);
   assert.strictEqual(g.placeBid('b', 1, 3).ok, true);
-  assert.strictEqual(g.placeBid('c', 1, 4).ok, true);
-  assert.strictEqual(g.challenge('d').ok, true);
+  assert.strictEqual(g.placeBid('c', 5, 6).ok, true); // "5 da 6": falsa (0 sei)
+  assert.strictEqual(g.challenge('d').ok, true); // D dubita bene -> perde C (dichiarante)
+  assert.strictEqual(g.lastResult.loserId, 'c');
   assert.strictEqual(g.startNextRound().ok, true);
-  // Il round successivo lo apre D (chi ha dubitato), non "il dopo di A".
-  assert.strictEqual(g.currentPlayer().id, 'd');
-  assert.strictEqual(g.roundStarterIndex, 3);
+  // Apre chi ha perso il dado = C (index 2), NON il dubitante D.
+  assert.strictEqual(g.currentPlayer().id, 'c');
+  assert.strictEqual(g.roundStarterIndex, 2);
 });
 
-test('nuovo round: se il dubitante è eliminato, apre il primo vivo dopo di lui', () => {
-  // 3 giocatori con 1 dado: A apre, dichiara il falso, B dubita e... la
-  // dichiarazione è VERA (nei dadi forzati) quindi B (dubitante) perde il suo
-  // unico dado ed è eliminato. Apre allora il primo vivo dopo B, cioè C.
+test('nuovo round: se chi perde è eliminato, apre il primo vivo dopo di lui', () => {
+  // 3 giocatori con 1 dado, nessun 6: A dichiara il falso, B dubita, A (dichiarante)
+  // perde il suo unico dado ed è eliminato -> apre il primo vivo dopo A, cioè B.
   const g = new Game(
     [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }, { id: 'c', name: 'C' }],
     1,
-    { starterIndex: 0, rng: diceRng([3, 3, 5]) } // A=3, B=3, C=5 -> due 3 in tavola
+    { starterIndex: 0, rng: diceRng([1, 1, 1]) }
   );
-  assert.strictEqual(g.placeBid('a', 2, 3).ok, true); // "due da 3": vera (ce ne sono 2)
+  assert.strictEqual(g.placeBid('a', 3, 6).ok, true); // "tre da 6": falsa (0 sei)
   assert.strictEqual(g.challenge('b').ok, true);
-  assert.strictEqual(g.lastResult.loserId, 'b');
-  assert.strictEqual(g.phase, 'reveal');
+  assert.strictEqual(g.lastResult.loserId, 'a');
+  assert.strictEqual(g.lastResult.loserEliminated, true);
   assert.strictEqual(g.startNextRound().ok, true);
-  assert.strictEqual(g.currentPlayer().id, 'c'); // B eliminato -> apre C
+  assert.strictEqual(g.currentPlayer().id, 'b'); // A eliminato -> apre B
 });
 
 test('stato pubblico non espone i dadi durante il bidding', () => {

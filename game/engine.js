@@ -17,7 +17,7 @@
  *        conteggio >= quantita'  -> dichiarazione vera  -> chi ha dubitato perde 1 dado
  *        altrimenti               -> dichiarazione falsa -> chi ha dichiarato perde 1 dado
  *  - A 0 dadi si e' eliminati. Vince l'ultimo rimasto.
- *  - Round 1: starter casuale. Round successivi: apre chi ha dubitato nel
+ *  - Round 1: starter casuale. Round successivi: apre chi ha perso il dado nel
  *    round appena concluso (se eliminato, il primo giocatore vivo dopo di lui).
  */
 
@@ -108,7 +108,7 @@ class Game {
         : Math.floor(this.rng() * this.players.length);
     this.roundStarterIndex = start;
     this.turnIndex = start;
-    this._doubterIndex = start; // default finché non c'è un "dubito"
+    this._nextStarterIndex = start; // default finché non c'è un "dubito"
     this._roll();
     this.roundNumber = 1;
   }
@@ -183,9 +183,6 @@ class Game {
       return { ok: false, reason: 'Non è il tuo turno.' };
     }
 
-    // Il round successivo lo aprirà chi ha dubitato (salvo eliminazione).
-    this._doubterIndex = this.turnIndex;
-
     const bid = this.currentBid;
     const bidder = this.players.find((p) => p.id === bid.playerId);
     const actualCount = countFace(this.players, bid.face);
@@ -193,6 +190,8 @@ class Game {
 
     // Chi ha dubitato correttamente sopravvive; l'altro perde un dado.
     const loser = bidWasTrue ? challenger : bidder;
+    // Il round successivo lo aprirà chi ha perso il dado (salvo eliminazione).
+    this._nextStarterIndex = this.players.indexOf(loser);
     loser.diceCount -= 1;
     if (loser.diceCount <= 0) {
       loser.diceCount = 0;
@@ -235,17 +234,17 @@ class Game {
   }
 
   /**
-   * Passa dalla fase 'reveal' al round successivo: apre chi ha dubitato (o, se
-   * è stato eliminato, il primo giocatore vivo dopo di lui), ritiro dei dadi,
-   * fase bidding. Ritorna { ok, reason? }.
+   * Passa dalla fase 'reveal' al round successivo: apre chi ha perso il dado
+   * (o, se è stato eliminato, il primo giocatore vivo dopo di lui), ritiro dei
+   * dadi, fase bidding. Ritorna { ok, reason? }.
    */
   startNextRound() {
     if (this.phase !== 'reveal') {
       return { ok: false, reason: 'Nessun round da avviare.' };
     }
-    // Apre il round chi ha dubitato; se eliminato, il prossimo vivo in gioco.
-    const from = Number.isInteger(this._doubterIndex)
-      ? this._doubterIndex
+    // Apre il round chi ha perso il dado; se eliminato, il prossimo vivo.
+    const from = Number.isInteger(this._nextStarterIndex)
+      ? this._nextStarterIndex
       : this.roundStarterIndex;
     this.roundStarterIndex = this._nextAliveFrom(from);
     this.turnIndex = this.roundStarterIndex;
