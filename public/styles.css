@@ -1050,3 +1050,115 @@ button:disabled {
   word-break: break-word;
   margin-top: 2px;
 }
+
+/* ==================== VARIANTI (Jolly / Palifico / Calza) ==================== */
+
+/* --- selettore modalità (creazione tavolo) --- */
+.mode-picker {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 6px;
+}
+.mode-opt {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  align-items: flex-start;
+  text-align: left;
+  padding: 10px;
+  border-radius: 12px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  color: var(--text);
+}
+.mode-opt.selected {
+  border-color: var(--accent);
+  background: var(--card-2);
+  box-shadow: 0 0 0 2px rgba(108, 123, 255, 0.35);
+}
+.mode-name {
+  font-weight: 700;
+  font-size: 15px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.mode-desc {
+  font-size: 11px;
+  color: var(--muted);
+  line-height: 1.3;
+}
+.mode-pip {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ff8080, #e03131 70%);
+  box-shadow: 0 0 4px rgba(224, 49, 49, 0.7);
+}
+@media (max-width: 460px) {
+  .mode-picker { grid-template-columns: 1fr; }
+  .mode-opt { flex-direction: row; align-items: center; justify-content: space-between; }
+  .mode-desc { text-align: right; }
+}
+
+/* --- jolly: l'1 wild ha il pallino centrale grande e rosso --- */
+.die.wild .pip.on::after {
+  background: radial-gradient(circle at 35% 30%, #ff9a9a, #e03131 70%) !important;
+  width: 82%;
+  height: 82%;
+  margin: 9%;
+  box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.4), 0 0 3px rgba(224, 49, 49, 0.6);
+}
+
+/* --- banner palifico --- */
+.palifico-banner {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: rgba(255, 209, 102, 0.14);
+  border: 1px solid var(--gold);
+  border-radius: 12px;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: 14px;
+  color: var(--gold);
+  text-align: center;
+}
+
+/* --- pulsante Calza (fuori turno) --- */
+.calza-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+  animation: fade 0.2s ease;
+}
+.calza-btn {
+  width: 100%;
+  max-width: 320px;
+  font-size: 18px;
+  font-weight: 800;
+  padding: 16px;
+  background: linear-gradient(90deg, var(--gold), #ffb703);
+  color: #3a2b00;
+  box-shadow: 0 8px 20px rgba(255, 183, 3, 0.35);
+  animation: pulse 1.6s ease-in-out infinite;
+}
+.calza-hint {
+  font-size: 12px;
+  color: var(--muted);
+}
+.calza-hint em {
+  color: var(--gold);
+  font-style: normal;
+  font-weight: 700;
+}
+
+/* face-picker: opzione disabilitata */
+.face-opt.disabled {
+  opacity: 0.28;
+  pointer-events: none;
+}

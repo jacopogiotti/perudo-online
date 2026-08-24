@@ -33,6 +33,21 @@
             <option value="4">4 dadi</option>
             <option value="5" selected>5 dadi</option>
           </select>
+          <label>Modalità</label>
+          <div id="mode-picker" class="mode-picker">
+            <button type="button" class="mode-opt selected" data-mode="standard">
+              <span class="mode-name">Standard</span>
+              <span class="mode-desc">Rilancia o dubita. Nessun jolly.</span>
+            </button>
+            <button type="button" class="mode-opt" data-mode="jolly">
+              <span class="mode-name">Jolly <span class="mode-pip"></span></span>
+              <span class="mode-desc">Gli 1 sono jolly + Palifico.</span>
+            </button>
+            <button type="button" class="mode-opt" data-mode="calza">
+              <span class="mode-name">Calza</span>
+              <span class="mode-desc">Jolly, Palifico e la mossa "Calza".</span>
+            </button>
+          </div>
           <button id="btn-create" class="primary">Crea tavolo</button>
         </div>
 
@@ -105,6 +120,10 @@
           <span id="rolls-text">In attesa dei lanci…</span>
         </div>
 
+        <div id="palifico-banner" class="palifico-banner hidden">
+          <span id="palifico-text"></span>
+        </div>
+
         <div id="current-bid" class="current-bid">
           <span class="muted">Ultima dichiarazione</span>
           <div id="bid-display" class="bid-display">—</div>
@@ -132,6 +151,11 @@
         </div>
         <div id="waiting-turn" class="waiting hidden">
           <span class="spinner"></span> <span id="waiting-text">In attesa…</span>
+        </div>
+
+        <div id="calza-wrap" class="calza-wrap hidden">
+          <button id="btn-calza" class="calza-btn">✋ Calza!</button>
+          <span class="calza-hint">Pensi che l'ultima dichiarazione sia <em>esatta</em>?</span>
         </div>
       </section>
 

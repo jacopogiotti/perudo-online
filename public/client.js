@@ -24,9 +24,13 @@ function pipsHtml(v) {
   }
   return s;
 }
-/** HTML di un dado realistico. size: die-lg | die-md | die-sm | die-xs */
-function dieEl(v, size, extra) {
-  return `<span class="die ${size || 'die-md'}${extra ? ' ' + extra : ''}" data-val="${v}">${pipsHtml(v)}</span>`;
+/** HTML di un dado realistico. size: die-lg | die-md | die-sm | die-xs.
+ *  Se `wild` è true e il valore è 1, l'1 è reso come jolly (pallino rosso grande). */
+function dieEl(v, size, extra, wild) {
+  const cls = [size || 'die-md', extra, wild && v === 1 ? 'wild' : '']
+    .filter(Boolean)
+    .join(' ');
+  return `<span class="die ${cls}" data-val="${v}">${pipsHtml(v)}</span>`;
 }
 function setDieFace(el, v) {
   el.dataset.val = v;
@@ -53,6 +57,7 @@ const state = {
   lastRoundSeen: null, // per azzerare il selettore a nuovo round
   chatOpen: false,
   unread: 0,
+  mode: 'standard', // modalità scelta in creazione: standard | jolly | calza
 };
 
 // ---------- schermate ----------
@@ -97,11 +102,21 @@ function shareLink(code) {
 }
 
 // ---------- HOME ----------
+// Selettore modalità (segmented). Aggiorna state.mode.
+document.querySelectorAll('#mode-picker .mode-opt').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    state.mode = btn.dataset.mode;
+    document.querySelectorAll('#mode-picker .mode-opt').forEach((b) =>
+      b.classList.toggle('selected', b === btn)
+    );
+  });
+});
+
 $('#btn-create').addEventListener('click', () => {
   const hostName = $('#host-name').value;
   const dicePerPlayer = $('#dice-count').value;
   if (!hostName.trim()) return toast('Inserisci il tuo nome.');
-  socket.emit('createRoom', { hostName, dicePerPlayer }, (res) => {
+  socket.emit('createRoom', { hostName, dicePerPlayer, mode: state.mode }, (res) => {
     if (!res.ok) return toast(res.error);
     state.me = { code: res.code, playerId: res.playerId, isHost: true, token: res.token };
     saveSession();
@@ -272,11 +287,21 @@ function renderGame(room) {
     banner.classList.add('hidden');
   }
 
+  // Banner Palifico
+  const palBanner = $('#palifico-banner');
+  if (g.palifico && g.phase === 'bidding') {
+    const palName = (room.players.find((p) => p.id === g.palificoPlayerId) || {}).name || '';
+    palBanner.classList.remove('hidden');
+    $('#palifico-text').innerHTML = `⚠️ <strong>Palifico</strong> — apre ${escapeHtml(palName)} · valore bloccato · niente jolly`;
+  } else {
+    palBanner.classList.add('hidden');
+  }
+
   // Dichiarazione corrente
   const bidEl = $('#bid-display');
   if (g.currentBid) {
     bidEl.className = 'bid-display has-bid';
-    bidEl.innerHTML = `<span class="bid-x">${g.currentBid.quantity} ×</span> ${dieEl(g.currentBid.face, 'die-sm')}`;
+    bidEl.innerHTML = `<span class="bid-x">${g.currentBid.quantity} ×</span> ${dieEl(g.currentBid.face, 'die-sm', '', g.wild)}`;
   } else {
     const starter = (room.players.find((p) => p.id === g.starterPlayerId) || {}).name;
     bidEl.className = 'bid-display no-bid';
@@ -301,10 +326,15 @@ function renderGame(room) {
   } else if (myTurn && iRolled && rolling.allRolled) {
     controls.classList.remove('hidden');
     waiting.classList.add('hidden');
-    const minQty = g.currentBid ? g.currentBid.quantity : 1;
-    if (state.qty < minQty) state.qty = minQty;
     $('#btn-doubt').disabled = !g.currentBid;
-    renderBidBuilder();
+    const meC = room.players.find((p) => p.id === state.me.playerId);
+    if (g.palifico) {
+      $('#controls-title').textContent =
+        meC && meC.diceCount === 1 ? 'Palifico: puoi cambiare valore' : 'Palifico: valore bloccato';
+    } else {
+      $('#controls-title').textContent = 'Tocca a te!';
+    }
+    renderBidBuilder(room);
   } else {
     controls.classList.add('hidden');
     if (g.phase === 'bidding') {
@@ -321,6 +351,24 @@ function renderGame(room) {
       waiting.classList.add('hidden');
     }
   }
+
+  // Pulsante Calza (fuori turno) per i giocatori eleggibili.
+  $('#calza-wrap').classList.toggle('hidden', !calzaEligible(room));
+}
+
+/** Posso chiamare Calza adesso? (specchio della logica server) */
+function calzaEligible(room) {
+  const g = room.game;
+  if (!g || room.mode !== 'calza') return false;
+  if (g.phase !== 'bidding' || !g.currentBid || g.palifico || room.paused) return false;
+  if (g.rolling && !g.rolling.allRolled) return false;
+  if (room.players.filter((p) => p.alive).length <= 2) return false;
+  const me = room.players.find((p) => p.id === state.me.playerId);
+  if (!me || !me.alive) return false;
+  if (me.diceCount >= room.dicePerPlayer) return false; // devi aver perso un dado
+  if (state.me.playerId === g.turnPlayerId) return false; // non chi è di turno
+  if (state.me.playerId === g.nextPlayerId) return false; // non il successivo
+  return true;
 }
 
 function renderMyDice(room) {
@@ -339,7 +387,7 @@ function renderMyDice(room) {
   if (g.phase !== 'bidding') {
     label.textContent = 'I tuoi dadi';
     wrap.classList.remove('tap');
-    wrap.innerHTML = state.myDice.map((v) => dieEl(v, 'die-lg')).join('');
+    wrap.innerHTML = state.myDice.map((v) => dieEl(v, 'die-lg', '', g.wild)).join('');
     return;
   }
 
@@ -348,7 +396,7 @@ function renderMyDice(room) {
   if (state.rolledRound === g.roundNumber) {
     label.textContent = 'I tuoi dadi';
     wrap.classList.remove('tap');
-    wrap.innerHTML = state.myDice.map((v) => dieEl(v, 'die-lg')).join('');
+    wrap.innerHTML = state.myDice.map((v) => dieEl(v, 'die-lg', '', g.wild)).join('');
   } else {
     label.textContent = '';
     wrap.classList.add('tap');
@@ -395,24 +443,75 @@ function throwDice(values, wrap) {
   }, 70);
 }
 
-function renderBidBuilder() {
+/** Facce selezionabili in base a modalità/palifico. */
+function allowedFaces(room) {
+  const g = room.game;
+  const opening = !g.currentBid;
+  if (g.palifico) {
+    const me = room.players.find((p) => p.id === state.me.playerId);
+    const canChange = opening || (me && me.diceCount === 1);
+    return canChange ? [1, 2, 3, 4, 5, 6] : [g.lockedFace];
+  }
+  if (g.wild) {
+    return opening ? [2, 3, 4, 5, 6] : [1, 2, 3, 4, 5, 6]; // niente apertura sugli 1
+  }
+  return [1, 2, 3, 4, 5, 6];
+}
+
+/** Quantità minima legale per un rilancio sulla faccia scelta (mirror server). */
+function minQtyForFace(room, face) {
+  const g = room.game;
+  const cur = g.currentBid;
+  if (!cur) return 1;
+  if (g.palifico) {
+    const me = room.players.find((p) => p.id === state.me.playerId);
+    const canChange = me && me.diceCount === 1;
+    if (canChange) return face > cur.face ? cur.quantity : cur.quantity + 1;
+    return cur.quantity + 1;
+  }
+  if (g.wild) {
+    const curAce = cur.face === 1;
+    const nextAce = face === 1;
+    if (!curAce && !nextAce) return face > cur.face ? cur.quantity : cur.quantity + 1;
+    if (!curAce && nextAce) return Math.ceil(cur.quantity / 2);
+    if (curAce && !nextAce) return cur.quantity * 2 + 1;
+    return cur.quantity + 1;
+  }
+  return face > cur.face ? cur.quantity : cur.quantity + 1;
+}
+
+function renderBidBuilder(room) {
+  const g = room.game;
+  const faces = allowedFaces(room);
+  if (!faces.includes(state.face)) state.face = faces[0];
+  const min = minQtyForFace(room, state.face);
+  state.minQty = min;
+  if (state.qty < min) state.qty = min;
   $('#qty-val').textContent = state.qty;
+
   const picker = $('#face-picker');
   picker.innerHTML = '';
   for (let f = 1; f <= 6; f += 1) {
     const b = document.createElement('button');
-    b.className = 'face-opt' + (f === state.face ? ' selected' : '');
-    b.innerHTML = dieEl(f, 'die-sm');
-    b.onclick = () => {
-      state.face = f;
-      renderBidBuilder();
-    };
+    const allowed = faces.includes(f);
+    b.className =
+      'face-opt' + (f === state.face ? ' selected' : '') + (allowed ? '' : ' disabled');
+    b.innerHTML = dieEl(f, 'die-sm', '', g.wild);
+    if (allowed) {
+      b.onclick = () => {
+        state.face = f;
+        renderBidBuilder(room);
+      };
+    } else {
+      b.disabled = true;
+    }
     picker.appendChild(b);
   }
 }
 
 $('#qty-minus').addEventListener('click', () => {
-  state.qty = Math.max(1, state.qty - 1);
+  const min = state.minQty || 1;
+  state.qty = Math.max(min, state.qty - 1);
   $('#qty-val').textContent = state.qty;
 });
 $('#qty-plus').addEventListener('click', () => {
@@ -428,6 +527,16 @@ $('#btn-bid').addEventListener('click', () => {
 
 $('#btn-doubt').addEventListener('click', () => {
   socket.emit('challenge', {}, (res) => {
+    if (!res.ok) toast(res.error);
+  });
+});
+
+$('#btn-calza').addEventListener('click', () => {
+  const g = state.room && state.room.game;
+  const expectedBid = g && g.currentBid
+    ? { quantity: g.currentBid.quantity, face: g.currentBid.face }
+    : null;
+  socket.emit('calza', { expectedBid }, (res) => {
     if (!res.ok) toast(res.error);
   });
 });
@@ -466,17 +575,31 @@ function showReveal(room) {
   const key = g.roundNumber + ':' + (gameOver ? 'end' : 'rev');
   const isNew = state.revealKey !== key;
 
+  const isCalza = r.type === 'calza';
   $('#overlay-title').textContent = gameOver
     ? '🏆 Partita finita!'
+    : isCalza
+    ? r.exact
+      ? '✋ CALZA esatta!'
+      : '✋ Calza sbagliata'
     : r.bidWasTrue
     ? 'Dichiarazione VERA'
     : 'Dichiarazione FALSA';
 
-  const bidStr = `${r.bid.quantity} × ${faceName(r.bid.face)}`;
-  const sub =
-    `${escapeHtml(r.bidderName)} aveva dichiarato ${bidStr}. In tavola: ` +
-    `${r.actualCount} dadi da ${faceName(r.bid.face)}. ` +
-    `${escapeHtml(r.loserName)} perde un dado${r.loserEliminated ? ' ed è eliminato/a' : ''}.`;
+  const bidStr = `${r.bid.quantity} × ${faceName(r.bid.face, r.wild)}`;
+  let sub;
+  if (isCalza) {
+    sub =
+      `${escapeHtml(r.callerName)} ha calzato ${bidStr}. In tavola: ${r.actualCount}. ` +
+      (r.exact
+        ? `<strong>${escapeHtml(r.callerName)}</strong> recupera un dado! 🎉`
+        : `${escapeHtml(r.callerName)} perde un dado${r.loserEliminated ? ' ed è eliminato/a' : ''}.`);
+  } else {
+    sub =
+      `${escapeHtml(r.bidderName)} aveva dichiarato ${bidStr}. In tavola: ` +
+      `${r.actualCount} dadi da ${faceName(r.bid.face, r.wild)}. ` +
+      `${escapeHtml(r.loserName)} perde un dado${r.loserEliminated ? ' ed è eliminato/a' : ''}.`;
+  }
   $('#overlay-sub').innerHTML = gameOver
     ? `Vince <strong>${escapeHtml(r.winnerName)}</strong>! 🎉`
     : sub;
@@ -487,7 +610,12 @@ function showReveal(room) {
     const row = document.createElement('div');
     row.className = 'reveal-row' + (p.id === r.loserId ? ' loser' : '');
     const dice = p.dice.length
-      ? p.dice.map((d) => dieEl(d, 'die-xs', d === r.bid.face ? 'match' : '')).join('')
+      ? p.dice
+          .map((d) => {
+            const match = d === r.bid.face || (r.wild && d === 1);
+            return dieEl(d, 'die-xs', match ? 'match' : '', r.wild);
+          })
+          .join('')
       : '<span class="muted">—</span>';
     row.innerHTML = `<span class="r-name">${escapeHtml(p.name)}</span><span class="reveal-dice">${dice}</span>`;
     rev.appendChild(row);
@@ -570,8 +698,9 @@ function refreshCountdownReady(ready) {
   updateCountdownText(left, ready);
 }
 
-function faceName(v) {
-  return `<span class="die die-xs inline" data-val="${v}">${pipsHtml(v)}</span>`;
+function faceName(v, wild) {
+  const w = wild && v === 1 ? ' wild' : '';
+  return `<span class="die die-xs inline${w}" data-val="${v}">${pipsHtml(v)}</span>`;
 }
 
 function hideOverlay() {
@@ -700,7 +829,7 @@ function renderLog(room) {
       <div class="log-row">
         <span class="log-num">${i + 1}</span>
         <span class="log-name">${escapeHtml(b.name)}</span>
-        <span class="log-bid">${b.quantity} × ${dieEl(b.face, 'die-xs')}</span>
+        <span class="log-bid">${b.quantity} × ${dieEl(b.face, 'die-xs', '', g.wild)}</span>
       </div>`
     )
     .join('');

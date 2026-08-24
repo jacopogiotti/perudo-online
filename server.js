@@ -53,6 +53,7 @@ function roomStatePayload(room) {
     code: room.code,
     status: room.status,
     dicePerPlayer: room.dicePerPlayer,
+    mode: room.mode || 'standard',
     maxPlayers: MAX_PLAYERS,
     minPlayers: MIN_PLAYERS,
     hostId: room.hostId,
@@ -69,6 +70,12 @@ function roomStatePayload(room) {
           turnPlayerId: gameState.turnPlayerId,
           starterPlayerId: gameState.starterPlayerId,
           winnerId: gameState.winnerId,
+          mode: gameState.mode,
+          wild: gameState.wild,
+          palifico: gameState.palifico,
+          palificoPlayerId: gameState.palificoPlayerId,
+          lockedFace: gameState.lockedFace,
+          nextPlayerId: gameState.nextPlayerId,
           lastResult: room.game.lastResult || null,
           ready: readyInfo(room, gameState),
           rolling: rollingInfo(room, gameState),
@@ -189,8 +196,8 @@ function ack(cb, data) {
 
 io.on('connection', (socket) => {
   // --- Creazione tavolo (host) ---
-  socket.on('createRoom', ({ hostName, dicePerPlayer } = {}, cb) => {
-    const res = manager.createRoom(hostName, dicePerPlayer);
+  socket.on('createRoom', ({ hostName, dicePerPlayer, mode } = {}, cb) => {
+    const res = manager.createRoom(hostName, dicePerPlayer, mode);
     if (res.error) return ack(cb, { ok: false, error: res.error });
     const { room, player } = res;
     player.socketId = socket.id;
@@ -286,6 +293,32 @@ io.on('connection', (socket) => {
       return ack(cb, { ok: false, error: 'Aspetta che tutti lancino i dadi.' });
     }
     const res = room.game.challenge(ctx.playerId);
+    if (!res.ok) return ack(cb, { ok: false, error: res.reason });
+    ack(cb, { ok: true });
+
+    if (room.game.phase === 'gameOver') {
+      room.status = 'finished';
+    } else if (room.game.phase === 'reveal') {
+      room.readyNext = new Set();
+    }
+    broadcastRoom(room);
+    if (room.game.phase === 'reveal') {
+      scheduleNextRound(room);
+    }
+  });
+
+  // --- "Calza" (modalità calza): azione FUORI turno, senza controllo di turno ---
+  socket.on('calza', ({ expectedBid } = {}, cb) => {
+    const ctx = socket.data || {};
+    const room = manager.getRoom(ctx.code);
+    if (!room || !room.game) return ack(cb, { ok: false, error: 'Partita non attiva.' });
+    if (isPaused(room)) {
+      return ack(cb, { ok: false, error: 'Partita in pausa: si attende il rientro di un giocatore.' });
+    }
+    if (!allRolled(room)) {
+      return ack(cb, { ok: false, error: 'Aspetta che tutti lancino i dadi.' });
+    }
+    const res = room.game.calza(ctx.playerId, expectedBid);
     if (!res.ok) return ack(cb, { ok: false, error: res.reason });
     ack(cb, { ok: true });
 
