@@ -1162,3 +1162,11 @@ button:disabled {
   opacity: 0.28;
   pointer-events: none;
 }
+
+.mode-test {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--gold);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
