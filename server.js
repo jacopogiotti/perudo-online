@@ -74,6 +74,8 @@ function roomStatePayload(room) {
           wild: gameState.wild,
           palifico: gameState.palifico,
           palificoPlayerId: gameState.palificoPlayerId,
+          palificoPending: gameState.palificoPending,
+          palificoPendingId: gameState.palificoPendingId,
           lockedFace: gameState.lockedFace,
           nextPlayerId: gameState.nextPlayerId,
           lastResult: room.game.lastResult || null,
@@ -331,6 +333,17 @@ io.on('connection', (socket) => {
     if (room.game.phase === 'reveal') {
       scheduleNextRound(room);
     }
+  });
+
+  // --- Scelta Palifico (l'apertura con 1 dado decide se attivarlo) ---
+  socket.on('choosePalifico', ({ activate } = {}, cb) => {
+    const ctx = socket.data || {};
+    const room = manager.getRoom(ctx.code);
+    if (!room || !room.game) return ack(cb, { ok: false, error: 'Partita non attiva.' });
+    const res = room.game.choosePalifico(ctx.playerId, !!activate);
+    if (!res.ok) return ack(cb, { ok: false, error: res.reason });
+    ack(cb, { ok: true });
+    broadcastRoom(room);
   });
 
   // --- "Procedi": il giocatore è pronto al round successivo ---

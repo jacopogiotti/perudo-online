@@ -1170,3 +1170,24 @@ button:disabled {
   letter-spacing: 0.5px;
   text-transform: uppercase;
 }
+
+/* Scelta Palifico (l'apertura con 1 dado decide) */
+.palifico-choice {
+  background: var(--card);
+  border: 1px solid var(--gold);
+  border-radius: var(--radius);
+  padding: 16px;
+  box-shadow: 0 0 0 2px rgba(255, 209, 102, 0.25);
+  text-align: center;
+}
+.palifico-choice .pc-title {
+  margin: 0 0 6px;
+  font-weight: 800;
+  color: var(--gold);
+}
+.palifico-choice .pc-sub {
+  margin: 0 0 14px;
+  font-size: 14px;
+  color: var(--muted);
+  line-height: 1.5;
+}

@@ -196,6 +196,9 @@ class Game {
     this.palifico = false;
     this.palificoPlayerId = null;
     this.lockedFace = null;
+    // Scelta palifico in sospeso: l'apertura con 1 dado deve decidere se attivarlo.
+    this.palificoPending = false;
+    this.palificoPendingId = null;
 
     const start =
       Number.isInteger(opts.starterIndex) &&
@@ -258,6 +261,9 @@ class Game {
     const player = this.currentPlayer();
     if (!player || player.id !== playerId) {
       return { ok: false, reason: 'Non è il tuo turno.' };
+    }
+    if (this.palificoPending) {
+      return { ok: false, reason: 'Devi prima decidere se dichiarare Palifico.' };
     }
     const bid = { quantity: quantity | 0, face: face | 0 };
 
@@ -438,28 +444,51 @@ class Game {
     this.turnIndex = this.roundStarterIndex;
     this.currentBid = null;
 
-    // Determina se il nuovo round è palifico.
+    // Palifico non è automatico: se l'apertura ha 1 dado (e non l'ha già usato)
+    // resta una SCELTA che il giocatore fa a inizio round (choosePalifico).
+    this.palifico = false;
+    this.palificoPlayerId = null;
+    this.lockedFace = null;
     const opener = this.players[this.roundStarterIndex];
-    if (
+    const eligible =
       this.mode !== 'standard' &&
       this._aliveCount() > 2 &&
       opener &&
       opener.diceCount === 1 &&
-      !opener.hasPalificoed
-    ) {
+      !opener.hasPalificoed;
+    this.palificoPending = !!eligible;
+    this.palificoPendingId = eligible ? opener.id : null;
+
+    this._roll();
+    this.roundNumber += 1;
+    this.phase = 'bidding';
+    return { ok: true };
+  }
+
+  /**
+   * L'apertura con 1 dado sceglie se dichiarare Palifico. Se lo attiva vale una
+   * sola volta a partita (hasPalificoed). Ritorna { ok, reason? }.
+   */
+  choosePalifico(playerId, activate) {
+    if (!this.palificoPending) {
+      return { ok: false, reason: 'Nessuna scelta Palifico in corso.' };
+    }
+    if (playerId !== this.palificoPendingId) {
+      return { ok: false, reason: 'Non tocca a te decidere il Palifico.' };
+    }
+    const opener = this.players.find((p) => p.id === playerId);
+    if (activate) {
       this.palifico = true;
-      this.palificoPlayerId = opener.id;
+      this.palificoPlayerId = opener ? opener.id : null;
       this.lockedFace = null;
-      opener.hasPalificoed = true;
+      if (opener) opener.hasPalificoed = true; // consumato solo se attivato
     } else {
       this.palifico = false;
       this.palificoPlayerId = null;
       this.lockedFace = null;
     }
-
-    this._roll();
-    this.roundNumber += 1;
-    this.phase = 'bidding';
+    this.palificoPending = false;
+    this.palificoPendingId = null;
     return { ok: true };
   }
 
@@ -474,6 +503,8 @@ class Game {
       wild: this.wildActive(),
       palifico: this.palifico,
       palificoPlayerId: this.palificoPlayerId,
+      palificoPending: this.palificoPending,
+      palificoPendingId: this.palificoPendingId,
       lockedFace: this.lockedFace,
       nextPlayerId: this._nextPlayerId(),
       currentBid: this.currentBid

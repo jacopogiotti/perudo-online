@@ -54,7 +54,7 @@ const state = {
   rolledRound: null, // roundNumber per cui ho gia' "lanciato" localmente
   animating: false,
   revealKey: null,
-  lastRoundSeen: null, // per azzerare il selettore a nuovo round
+  autoKey: null, // (round|dichiarazione) per cui ho già preselezionato il rilancio
   chatOpen: false,
   unread: 0,
   mode: 'standard', // modalità scelta in creazione: standard | jolly | calza
@@ -213,13 +213,6 @@ function renderGame(room) {
   $('#btn-end-game').classList.toggle('hidden', !isHost);
   $('#btn-leave').classList.toggle('hidden', isHost);
 
-  // Nuovo round: azzera il selettore alla "puntata consigliata" 1 × valore 1.
-  if (state.lastRoundSeen !== g.roundNumber) {
-    state.lastRoundSeen = g.roundNumber;
-    state.qty = 1;
-    state.face = 1;
-  }
-
   const rolling = g.rolling || { rolledIds: [], need: [], allRolled: true };
 
   // Auto-riparazione: se ho lanciato localmente ma il server non risulta
@@ -318,12 +311,21 @@ function renderGame(room) {
   const myTurn = g.phase === 'bidding' && g.turnPlayerId === state.me.playerId;
   const controls = $('#controls');
   const waiting = $('#waiting-turn');
+  const palChoice = $('#palifico-choice');
+  const palPendingMe = g.palificoPending && g.palificoPendingId === state.me.playerId;
 
   if (room.paused) {
     // In pausa (abbandono o disconnessione): nessuna mossa, ci pensa l'overlay.
     controls.classList.add('hidden');
     waiting.classList.add('hidden');
-  } else if (myTurn && iRolled && rolling.allRolled) {
+    palChoice.classList.add('hidden');
+  } else if (palPendingMe && iRolled) {
+    // Devo decidere se dichiarare Palifico prima di aprire il round.
+    controls.classList.add('hidden');
+    waiting.classList.add('hidden');
+    palChoice.classList.remove('hidden');
+  } else if (myTurn && iRolled && rolling.allRolled && !g.palificoPending) {
+    palChoice.classList.add('hidden');
     controls.classList.remove('hidden');
     waiting.classList.add('hidden');
     $('#btn-doubt').disabled = !g.currentBid;
@@ -334,8 +336,18 @@ function renderGame(room) {
     } else {
       $('#controls-title').textContent = 'Tocca a te!';
     }
+    // Preselezione automatica del prossimo rilancio possibile (una volta per
+    // ogni nuova dichiarazione), lasciando poi libertà di modifica.
+    const ctxKey = g.roundNumber + '|' + (g.currentBid ? g.currentBid.quantity + 'x' + g.currentBid.face : 'open');
+    if (state.autoKey !== ctxKey) {
+      const sel = nextRaiseDefault(room);
+      state.face = sel.face;
+      state.qty = sel.qty;
+      state.autoKey = ctxKey;
+    }
     renderBidBuilder(room);
   } else {
+    palChoice.classList.add('hidden');
     controls.classList.add('hidden');
     if (g.phase === 'bidding') {
       waiting.classList.remove('hidden');
@@ -343,6 +355,9 @@ function renderGame(room) {
         $('#waiting-text').textContent = 'Lancia i tuoi dadi per giocare 👆';
       } else if (!rolling.allRolled) {
         $('#waiting-text').textContent = 'In attesa che tutti lancino i dadi…';
+      } else if (g.palificoPending) {
+        const pn = (room.players.find((p) => p.id === g.palificoPendingId) || {}).name || '';
+        $('#waiting-text').textContent = `${pn} sta decidendo se dichiarare Palifico…`;
       } else {
         const turnName = (room.players.find((p) => p.id === g.turnPlayerId) || {}).name || '';
         $('#waiting-text').textContent = `Tocca a ${turnName}…`;
@@ -480,6 +495,26 @@ function minQtyForFace(room, face) {
   return face > cur.face ? cur.quantity : cur.quantity + 1;
 }
 
+/** Prossimo rilancio "minimo" da preselezionare (valido, in tutte le modalità). */
+function nextRaiseDefault(room) {
+  const g = room.game;
+  const cb = g.currentBid;
+  if (!cb) {
+    // apertura: in palifico l'1 è normale; in jolly non si apre sull'1
+    if (g.palifico) return { qty: 1, face: 1 };
+    return { qty: 1, face: g.wild ? 2 : 1 };
+  }
+  if (g.palifico) {
+    const me = room.players.find((p) => p.id === state.me.playerId);
+    const canChange = me && me.diceCount === 1;
+    if (!canChange) return { qty: cb.quantity + 1, face: g.lockedFace };
+    return cb.face < 6 ? { qty: cb.quantity, face: cb.face + 1 } : { qty: cb.quantity + 1, face: 1 };
+  }
+  if (g.wild && cb.face === 1) return { qty: cb.quantity + 1, face: 1 }; // più assi
+  // standard e jolly: stessa quantità con valore più alto; se 6, +1 quantità e riparti da 1
+  return cb.face < 6 ? { qty: cb.quantity, face: cb.face + 1 } : { qty: cb.quantity + 1, face: 1 };
+}
+
 function renderBidBuilder(room) {
   const g = room.game;
   const faces = allowedFaces(room);
@@ -527,6 +562,17 @@ $('#btn-bid').addEventListener('click', () => {
 
 $('#btn-doubt').addEventListener('click', () => {
   socket.emit('challenge', {}, (res) => {
+    if (!res.ok) toast(res.error);
+  });
+});
+
+$('#btn-palifico-yes').addEventListener('click', () => {
+  socket.emit('choosePalifico', { activate: true }, (res) => {
+    if (!res.ok) toast(res.error);
+  });
+});
+$('#btn-palifico-no').addEventListener('click', () => {
+  socket.emit('choosePalifico', { activate: false }, (res) => {
     if (!res.ok) toast(res.error);
   });
 });

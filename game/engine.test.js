@@ -243,15 +243,36 @@ test('palifico: si attiva quando l\'apertura ha 1 dado (prima volta), non a 2 gi
     { starterIndex: 0, mode: 'jolly' }
   );
   g.players[0].diceCount = 1; // simuliamo A a 1 dado
-  // forziamo un reveal: A dichiara, B dubita a caso; poi startNextRound aprirà A? no.
-  // Testiamo direttamente la logica di apertura impostando _nextStarterIndex su A.
   g.phase = 'reveal';
   g._nextStarterIndex = 0;
   assert.strictEqual(g.startNextRound().ok, true);
+  // Ora è una SCELTA in sospeso, non attivo d'ufficio.
+  assert.strictEqual(g.palificoPending, true);
+  assert.strictEqual(g.palificoPendingId, 'a');
+  assert.strictEqual(g.palifico, false);
+  // A decide di attivarlo.
+  assert.strictEqual(g.choosePalifico('a', true).ok, true);
   assert.strictEqual(g.palifico, true);
   assert.strictEqual(g.palificoPlayerId, 'a');
   assert.strictEqual(g.players[0].hasPalificoed, true);
+  assert.strictEqual(g.palificoPending, false);
   assert.strictEqual(g.wildActive(), false); // niente jolly in palifico
+});
+
+test('palifico: se rifiutato, round normale e NON si consuma', () => {
+  const g = new Game(
+    [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }, { id: 'c', name: 'C' }],
+    5,
+    { starterIndex: 0, mode: 'jolly' }
+  );
+  g.players[0].diceCount = 1;
+  g.phase = 'reveal';
+  g._nextStarterIndex = 0;
+  g.startNextRound();
+  assert.strictEqual(g.choosePalifico('a', false).ok, true);
+  assert.strictEqual(g.palifico, false);
+  assert.strictEqual(g.players[0].hasPalificoed, false); // non consumato
+  assert.strictEqual(g.wildActive(), true); // round normale con jolly
 });
 
 test('palifico: valore bloccato per i non-mono-dado, eccezione per chi ha 1 dado', () => {
@@ -267,6 +288,7 @@ test('palifico: valore bloccato per i non-mono-dado, eccezione per chi ha 1 dado
   g.phase = 'reveal';
   g._nextStarterIndex = 0;
   g.startNextRound();
+  assert.strictEqual(g.choosePalifico('a', true).ok, true); // A attiva il palifico
   assert.strictEqual(g.palifico, true);
   // A apre bloccando il valore 4
   assert.strictEqual(g.placeBid('a', 2, 4).ok, true);
@@ -291,6 +313,7 @@ test('palifico: una sola volta a partita', () => {
   g._nextStarterIndex = 0;
   g.startNextRound();
   assert.strictEqual(g.palifico, false); // niente secondo palifico
+  assert.strictEqual(g.palificoPending, false); // nemmeno la scelta
 });
 
 // ---------------- CALZA ----------------
