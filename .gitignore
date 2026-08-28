@@ -2,3 +2,4 @@ node_modules/
 npm-debug.log*
 .DS_Store
 .env
+price-ninja-css/
