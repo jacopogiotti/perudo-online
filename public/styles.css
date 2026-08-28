@@ -1513,18 +1513,20 @@ button:disabled {
   margin: 0 -3px;
 }
 
-/* pill / chip generici */
+/* pill / chip generici — testo che fluisce normalmente: su mobile
+   va a capo come una frase, niente colonne flex sballate */
 .rs-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: 7px;
+  display: inline-block;
   font-size: 13px;
   font-weight: 600;
+  line-height: 1.55;
   color: var(--muted);
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--line);
-  border-radius: 999px;
-  padding: 7px 14px;
+  border-radius: 16px;
+  padding: 8px 14px;
+  max-width: 100%;
+  text-align: center;
 }
 .rs-pill b {
   color: var(--text);
