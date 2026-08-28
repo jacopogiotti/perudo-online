@@ -102,131 +102,15 @@ function shareLink(code) {
 }
 
 // ---------- HOME ----------
-// Selettore modalità (segmented). Aggiorna state.mode e le regole illustrate.
+// Selettore modalità (segmented). Aggiorna state.mode.
 document.querySelectorAll('#mode-picker .mode-opt').forEach((btn) => {
   btn.addEventListener('click', () => {
     state.mode = btn.dataset.mode;
     document.querySelectorAll('#mode-picker .mode-opt').forEach((b) =>
       b.classList.toggle('selected', b === btn)
     );
-    renderRules(state.mode);
   });
 });
-
-// ---------- REGOLE ILLUSTRATE (carosello) ----------
-function rDots(n, total) {
-  let s = '';
-  for (let i = 0; i < total; i += 1) s += `<span class="dot ${i < n ? '' : 'spent'}"></span>`;
-  return s;
-}
-const RULES = {
-  standard: [
-    {
-      t: 'Obiettivo',
-      d: 'Ognuno ha 5 dadi nascosti nel bicchiere. Vince chi resta per ultimo con almeno un dado.',
-      fig: () =>
-        `<div class="rfig-row">
-          <div class="rfig-card"><div class="rfig-top"><span class="avatar">JA</span><span class="rfig-name">Jacopo</span></div><div class="dice-count">${rDots(5, 5)}</div></div>
-          <div class="rfig-card"><div class="rfig-top"><span class="avatar">MA</span><span class="rfig-name">Marco</span></div><div class="dice-count">${rDots(5, 5)}</div></div>
-        </div>`,
-    },
-    {
-      t: 'La dichiarazione',
-      d: 'A turno dichiari quanti dadi di un valore ci sono in tutto il tavolo — contano i bicchieri di tutti, non solo il tuo.',
-      fig: () => `<div class="rfig-bid"><span>3 ×</span> ${dieEl(5, 'die-lg')}</div>`,
-    },
-    {
-      t: 'Il rilancio',
-      d: 'Al tuo turno rilanci: o aumenti la quantità, oppure tieni la quantità ma alzi il valore.',
-      fig: () =>
-        `<div class="rfig-raise">
-          <div class="rfig-line"><span>3×</span> ${dieEl(5, 'die-sm')} <span class="rfig-arrow">→</span> <span>3×</span> ${dieEl(6, 'die-sm')}</div>
-          <div class="rfig-line"><span>3×</span> ${dieEl(5, 'die-sm')} <span class="rfig-arrow">→</span> <span>4×</span> ${dieEl(2, 'die-sm')}</div>
-        </div>`,
-    },
-    {
-      t: 'Il dubbio',
-      d: 'Se pensi che l\'ultima dichiarazione sia troppo alta, fai «Dubito!»: si scoprono tutti i dadi e si contano.',
-      fig: () =>
-        `<div class="rfig-reveal">
-          <div class="rfig-dice">${[5, 2, 5, 3, 5, 1].map((v) => dieEl(v, 'die-xs', v === 5 ? 'match' : '')).join('')}</div>
-          <div class="rfig-count">dichiarati 3× ${dieEl(5, 'die-xs')} · in tavola: 3 ✓</div>
-        </div>`,
-    },
-    {
-      t: 'Chi perde un dado',
-      d: 'Dichiarazione vera → perde chi ha dubitato. Falsa → perde chi l\'ha detta. A 0 dadi sei eliminato, e il round dopo lo apre chi ha perso.',
-      fig: () =>
-        `<div class="rfig-lose">
-          <div class="dice-count">${rDots(5, 5)}</div>
-          <span class="rfig-arrow">→</span>
-          <div class="dice-count">${rDots(4, 5)}</div>
-          <span class="rfig-minus">−1 dado</span>
-        </div>`,
-    },
-  ],
-};
-
-function renderRules(mode) {
-  const track = $('#rules-track');
-  if (!track) return;
-  $('#rules-mode-name').textContent =
-    mode === 'jolly' ? 'Jolly' : mode === 'calza' ? 'Calza' : 'Standard';
-  const slides = RULES[mode];
-  if (slides) {
-    track.innerHTML = slides
-      .map(
-        (s, i) => `<div class="rules-slide"><div class="rules-slide-in">
-          <div class="rs-fig">${s.fig()}</div>
-          <p class="rs-title">${s.t}</p>
-          <p class="rs-text">${s.d}</p>
-          <p class="rs-step">${i + 1} / ${slides.length}</p>
-        </div></div>`
-      )
-      .join('');
-  } else {
-    track.innerHTML = `<div class="rules-slide"><div class="rules-slide-in">
-      <div class="rs-fig" style="font-size:38px">🚧</div>
-      <p class="rs-title">Regole in arrivo</p>
-      <p class="rs-text">Le regole illustrate di questa modalità arrivano presto. Intanto puoi comunque creare il tavolo e giocare.</p>
-    </div></div>`;
-  }
-  buildRuleDots();
-  track.scrollLeft = 0;
-  updateRuleDots();
-}
-
-function buildRuleDots() {
-  const track = $('#rules-track');
-  const dots = $('#rules-dots');
-  dots.innerHTML = '';
-  const n = track.children.length;
-  for (let i = 0; i < n; i += 1) {
-    const b = document.createElement('button');
-    b.type = 'button';
-    b.className = 'rules-dot' + (i === 0 ? ' active' : '');
-    b.onclick = () => track.scrollTo({ left: i * track.clientWidth, behavior: 'smooth' });
-    dots.appendChild(b);
-  }
-}
-function updateRuleDots() {
-  const track = $('#rules-track');
-  const dots = $('#rules-dots');
-  const i = Math.round(track.scrollLeft / Math.max(1, track.clientWidth));
-  [...dots.children].forEach((d, idx) => d.classList.toggle('active', idx === i));
-}
-
-$('#rules-track').addEventListener('scroll', updateRuleDots);
-$('#rules-prev').addEventListener('click', () => {
-  const t = $('#rules-track');
-  t.scrollBy({ left: -t.clientWidth, behavior: 'smooth' });
-});
-$('#rules-next').addEventListener('click', () => {
-  const t = $('#rules-track');
-  t.scrollBy({ left: t.clientWidth, behavior: 'smooth' });
-});
-
-renderRules(state.mode); // mostra subito le regole della modalità di default
 
 $('#btn-create').addEventListener('click', () => {
   const hostName = $('#host-name').value;
