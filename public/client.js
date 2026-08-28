@@ -101,14 +101,295 @@ function shareLink(code) {
   return `${location.origin}${location.pathname}?room=${code}`;
 }
 
+// ---------- REGOLE (viewer stile "storie") ----------
+const MODE_NAMES = { standard: 'Standard', jolly: 'Jolly', calza: 'Calza' };
+
+/** Dado inclinato con ingresso animato a cascata (i = indice per il ritardo). */
+function rsTilt(v, deg, i, size, extra, wild) {
+  return `<span class="rs-tilt" style="--r:${deg}deg;--i:${i}">${dieEl(v, size || 'die-md', extra, wild)}</span>`;
+}
+/** Chip-dichiarazione: quantità × dado, con nota opzionale. */
+function rsChip(qty, face, cls, note, i, wild) {
+  return `<span class="rs-chip ${cls || ''}" style="--i:${i || 0}">${qty} × ${dieEl(face, 'die-sm', '', wild)}${
+    note ? `<span class="rs-note">${note}</span>` : ''
+  }</span>`;
+}
+/** Giocatore al tavolo: nome intero + dadi nascosti (punti interrogativi). */
+function rsSeat(name, n) {
+  const dice = Array.from({ length: n }, () => '<span class="rs-mystery">?</span>').join('');
+  return `<div class="rs-seat"><span class="rs-name">${name}</span><span class="hidden-dice">${dice}</span></div>`;
+}
+/** Riga di rivelazione: nome intero + i suoi dadi, con i dadi che contano in oro
+ *  (il valore dichiarato e, nei round jolly, anche gli 1). */
+function rsRRow(name, dice, face, i, wild) {
+  return `<div class="rs-rrow" style="--i:${i}"><span class="rs-rname">${name}</span><span class="rs-rdice">${dice
+    .map((v) => dieEl(v, 'die-sm', v === face || (wild && v === 1) ? 'match' : '', wild))
+    .join('')}</span></div>`;
+}
+
+/** Slide per modalità: { step, t (titolo), d (testo), fig() (HTML figura), cta? }. */
+const RULES = {
+  standard: [
+    {
+      step: 'Obiettivo',
+      t: 'Ultimo dado in piedi',
+      d: 'Tutti partono con lo <strong>stesso numero di dadi</strong>. Round dopo round qualcuno ne perde: vince <em>chi resta per ultimo</em>.',
+      fig: () => `
+        <div class="rs-fan">${[3, 6, 2, 5, 4]
+          .map((v, i) => rsTilt(v, [-16, -8, 0, 8, 16][i], i))
+          .join('')}</div>
+        <span class="rs-pill">🤫 Tieni i tuoi dadi <b>nascosti</b> agli avversari</span>`,
+    },
+    {
+      step: 'La dichiarazione',
+      t: 'Quanti ce ne sono?',
+      d: 'Al tuo turno dichiari quanti dadi di un valore ci sono <strong>in tutto il tavolo</strong>, contando anche quelli che non vedi. Stima… o bluff.',
+      fig: () => `
+        <div class="rs-table">${rsSeat('Luca', 3)}${rsSeat('Anna', 3)}</div>
+        <div class="rs-call">
+          <span class="rs-minelabel">La tua chiamata</span>
+          <span class="rs-bubble"><span class="rs-bsay">«Ci sono almeno</span> 3 × ${dieEl(3, 'die-md')}<span class="rs-bsay">»</span></span>
+        </div>
+        <div class="rs-mine">
+          <div class="rs-fan">${[3, 5, 3].map((v, i) => rsTilt(v, 0, i, 'die-sm')).join('')}</div>
+          <span class="rs-minelabel">I tuoi dadi</span>
+        </div>`,
+    },
+    {
+      step: 'Il rilancio',
+      t: 'Sempre più in alto',
+      d: 'Devi <strong>superare</strong> l\'ultima dichiarazione: <em>aumenta la quantità</em> — e puoi rilanciare su qualsiasi valore — oppure tieni la quantità e <em>alza il valore</em>.',
+      fig: () => `
+        <div class="rs-ladder">
+          ${rsChip(4, 3, 'base', '', 0)}
+          ${rsChip(5, 2, 'ok', 'quantità ↑ · valore libero', 1)}
+          <span class="rs-or">oppure</span>
+          ${rsChip(4, 5, 'ok', 'stessa quantità · valore ↑', 2)}
+        </div>`,
+    },
+    {
+      step: 'Il dubbio',
+      t: '«Dubito!»',
+      d: 'Ti sembra una sparata? Ferma il giro: <strong>tutti mostrano i dadi</strong> e si contano quelli del valore dichiarato.',
+      fig: () => `
+        <span class="rs-doubt">Dubito!</span>
+        <div class="rs-rrows">
+          ${rsRRow('Tu', [3, 5, 3], 3, 0)}
+          ${rsRRow('Luca', [2, 3, 6], 3, 1)}
+          ${rsRRow('Anna', [4, 1, 3], 3, 2)}
+        </div>
+        <span class="rs-pill">Dichiarati <b>4 ×</b> ${dieEl(3, 'die-xs', 'inline')} · trovati <b>4</b> ✔</span>`,
+    },
+    {
+      step: 'Chi perde',
+      t: 'Il verdetto',
+      d: '',
+      fig: () => `
+        <div class="rs-verdicts">
+          <div class="rs-verdict good" style="--i:0"><span class="rs-ico">✅</span><span><b>Era vera</b> → perde un dado <b>chi ha dubitato</b></span></div>
+          <div class="rs-verdict bad" style="--i:1"><span class="rs-ico">🔥</span><span><b>Era falsa</b> → perde un dado <b>chi l'ha detta</b></span></div>
+        </div>
+        <div class="rs-minis">
+          <span class="rs-pill">💀 A <b>0 dadi</b> sei eliminato</span>
+          <span class="rs-pill">🎲 Chi perde <b>apre</b> il round dopo</span>
+        </div>`,
+      cta: 'Tutto chiaro, si gioca! 🎲',
+    },
+  ],
+  jolly: [
+    {
+      step: 'Modalità Jolly',
+      t: 'Gli 1 fanno i matti',
+      d: 'Valgono tutte le regole della Standard, con <strong>due novità</strong>: gli <em>1 diventano jolly</em> e arriva il <em>Palifico</em>.',
+      fig: () => `
+        <div class="rs-fan">${rsTilt(1, -10, 0, 'die-lg', '', true)}${rsTilt(3, 10, 1, 'die-lg')}</div>
+        <div class="rs-minis">
+          <span class="rs-pill">${dieEl(1, 'die-xs', 'inline', true)} <b>jolly</b>: conta come tutto</span>
+          <span class="rs-pill">🎯 <b>Palifico</b>: il round dell'ultimo dado</span>
+        </div>`,
+    },
+    {
+      step: 'Il jolly',
+      t: 'Gli 1 contano sempre',
+      d: 'Alla conta, ogni <em>1</em> vale come il valore dichiarato. Le dichiarazioni salgono in fretta: tienine conto quando rilanci.',
+      fig: () => `
+        <span class="rs-pill">Dichiarati <b>4 ×</b> ${dieEl(3, 'die-xs', 'inline')}</span>
+        <div class="rs-rrows">
+          ${rsRRow('Tu', [3, 5, 1], 3, 0, true)}
+          ${rsRRow('Luca', [2, 3, 6], 3, 1, true)}
+          ${rsRRow('Anna', [4, 1, 3], 3, 2, true)}
+        </div>
+        <span class="rs-pill">Trovati <b>5</b> ✔ — gli ${dieEl(1, 'die-xs', 'inline', true)} contano come ${dieEl(3, 'die-xs', 'inline')}</span>`,
+    },
+    {
+      step: 'Puntare sugli 1',
+      t: 'Metà… o il doppio',
+      d: 'Puoi puntare anche sugli 1: passa con <em>metà quantità</em> (arrotondata per eccesso). Tornare ai numeri costa <em>il doppio più uno</em>. E il round non si può aprire sugli 1.',
+      fig: () => `
+        <div class="rs-ladder">
+          ${rsChip(4, 3, 'base', '', 0)}
+          ${rsChip(2, 1, 'ok', 'agli 1: metà ↓', 1, true)}
+          ${rsChip(5, 3, 'ok', 'dagli 1: doppio + 1', 2)}
+        </div>`,
+    },
+    {
+      step: 'Palifico',
+      t: 'Palifico!',
+      d: 'Entri nel round con <strong>1 dado</strong>? Puoi dichiarare Palifico — <em>una volta a partita</em> — e apri tu un giro speciale.',
+      fig: () => `
+        <span class="rs-doubt" style="background:linear-gradient(90deg,var(--gold),#ffb703);color:#3a2b00;box-shadow:0 0 26px rgba(255,183,3,.4)">🎲 Palifico!</span>`,
+      foot: () => `<span class="rs-pill">🔒 valore <b>bloccato</b>: si alza solo la quantità</span>`,
+    },
+    {
+      step: 'Palifico · da sapere',
+      t: 'Due cose ancora',
+      d: '',
+      fig: () => `
+        <div class="rs-verdicts">
+          <div class="rs-verdict bad" style="--i:0"><span class="rs-ico">${dieEl(1, 'die-xs')}</span><span>Durante il Palifico gli <b>1 non sono jolly</b>: tornano una faccia normale</span></div>
+          <div class="rs-verdict good" style="--i:1"><span class="rs-ico">🔁</span><span>Se qualcuno ha chiamato Palifico, chi è rimasto con <b>un solo dado</b> può cambiare la puntata</span></div>
+        </div>`,
+      cta: 'Tutto chiaro, si gioca! 🎲',
+    },
+  ],
+  calza: [
+    {
+      step: 'In sviluppo',
+      t: 'Modalità Calza',
+      d: 'Questa modalità è <strong>in fase di sviluppo</strong> e per ora non si può giocare. Avrà tutto della Jolly, più la mossa <em>«Calza»</em>: fermare il giro — anche fuori turno — se pensi che l\'ultima dichiarazione sia <strong>esatta</strong>.',
+      fig: () => `
+        <span class="rs-doubt" style="background:linear-gradient(90deg,var(--gold),#ffb703);color:#3a2b00;box-shadow:0 0 26px rgba(255,183,3,.4)">✋ Calza!</span>`,
+      foot: () => `<span class="rs-pill">🚧 presto giocabile</span>`,
+      cta: 'Ok, aspetto!',
+    },
+  ],
+};
+
+const rstory = {
+  el: $('#rules-story'),
+  frame: $('#rstory-frame'),
+  stage: $('#rstory-stage'),
+  dots: $('#rstory-dots'),
+  modeEl: $('#rstory-mode'),
+  hint: $('#rstory-hint'),
+  slides: [],
+  i: 0,
+  open: false,
+  hinted: false, // il suggerimento "tocca per continuare" sparisce al primo tap
+};
+
+function rulesShow(i, dir) {
+  const s = rstory.slides[i];
+  rstory.i = i;
+  rstory.stage.innerHTML = `
+    <div class="rslide ${dir === 'back' ? 'back' : ''}">
+      <p class="rs-step">${s.step}</p>
+      <h3 class="rs-title">${s.t}</h3>
+      <div class="rs-fig">${s.fig()}</div>
+      ${s.d ? `<p class="rs-text">${s.d}</p>` : ''}
+      ${s.foot ? `<div class="rs-minis">${s.foot()}</div>` : ''}
+      ${s.cta ? `<button type="button" class="primary rs-cta" id="rstory-cta">${s.cta}</button>` : ''}
+    </div>`;
+  const cta = $('#rstory-cta');
+  if (cta) cta.addEventListener('click', rulesClose);
+  rstory.dots.querySelectorAll('i').forEach((dot, k) => {
+    dot.classList.toggle('done', k < i);
+    dot.classList.toggle('cur', k === i);
+  });
+  // freccette laterali: solo verso slide che esistono
+  $('#rstory-arrow-left').classList.toggle('off', i === 0);
+  $('#rstory-arrow-right').classList.toggle('off', i >= rstory.slides.length - 1);
+}
+
+function rulesOpen(mode) {
+  rstory.slides = RULES[mode] || RULES.standard;
+  rstory.i = 0;
+  rstory.open = true;
+  rstory.hinted = false;
+  rstory.modeEl.textContent = 'Regole · ' + (MODE_NAMES[mode] || mode);
+  rstory.dots.innerHTML = rstory.slides.map(() => '<i></i>').join('');
+  document.querySelector('.rstory-deco-a').innerHTML = dieEl(5, 'die-lg');
+  document.querySelector('.rstory-deco-b').innerHTML = dieEl(2, 'die-lg');
+  rstory.hint.classList.toggle('gone', rstory.slides.length < 2);
+  rulesShow(0, 'fwd');
+  rstory.el.classList.remove('hidden');
+  document.body.style.overflow = 'hidden';
+}
+function rulesClose() {
+  rstory.open = false;
+  rstory.el.classList.add('hidden');
+  document.body.style.overflow = '';
+}
+function rulesHintOff() {
+  if (!rstory.hinted) {
+    rstory.hinted = true;
+    rstory.hint.classList.add('gone');
+  }
+}
+function rulesNext() {
+  if (rstory.i >= rstory.slides.length - 1) return rulesClose();
+  rulesHintOff();
+  rulesShow(rstory.i + 1, 'fwd');
+}
+function rulesPrev() {
+  if (rstory.i > 0) rulesShow(rstory.i - 1, 'back');
+}
+
+$('#rstory-next').addEventListener('click', rulesNext);
+$('#rstory-prev').addEventListener('click', rulesPrev);
+$('#rstory-close').addEventListener('click', rulesClose);
+// tap sullo sfondo fuori dalla card = chiudi
+rstory.el.addEventListener('click', (e) => {
+  if (e.target === rstory.el) rulesClose();
+});
+document.addEventListener('keydown', (e) => {
+  if (!rstory.open) return;
+  if (e.key === 'ArrowRight' || e.key === ' ') {
+    e.preventDefault();
+    rulesNext();
+  } else if (e.key === 'ArrowLeft') {
+    rulesPrev();
+  } else if (e.key === 'Escape') {
+    rulesClose();
+  }
+});
+// swipe orizzontale = avanti/indietro, swipe verso il basso = chiudi
+let rTouch = null;
+rstory.frame.addEventListener(
+  'touchstart',
+  (e) => {
+    rTouch = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  },
+  { passive: true }
+);
+rstory.frame.addEventListener('touchend', (e) => {
+  if (!rTouch) return;
+  const dx = e.changedTouches[0].clientX - rTouch.x;
+  const dy = e.changedTouches[0].clientY - rTouch.y;
+  rTouch = null;
+  if (Math.abs(dx) > 48 && Math.abs(dx) > Math.abs(dy)) {
+    if (dx < 0) rulesNext();
+    else rulesPrev();
+  } else if (dy > 70 && Math.abs(dy) > Math.abs(dx)) {
+    rulesClose();
+  }
+});
+
 // ---------- HOME ----------
-// Selettore modalità (segmented). Aggiorna state.mode.
+// Selettore modalità (segmented). Aggiorna state.mode e apre le regole della modalità.
+// Calza è in sviluppo: mostra solo l'anteprima, senza selezionarla.
 document.querySelectorAll('#mode-picker .mode-opt').forEach((btn) => {
   btn.addEventListener('click', () => {
-    state.mode = btn.dataset.mode;
+    const mode = btn.dataset.mode;
+    if (mode === 'calza') {
+      rulesOpen('calza');
+      return;
+    }
+    state.mode = mode;
     document.querySelectorAll('#mode-picker .mode-opt').forEach((b) =>
       b.classList.toggle('selected', b === btn)
     );
+    rulesOpen(state.mode);
   });
 });
 

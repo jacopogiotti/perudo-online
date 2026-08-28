@@ -1072,6 +1072,9 @@ button:disabled {
   border: 1px solid var(--line);
   color: var(--text);
 }
+.mode-opt.dev {
+  opacity: 0.6;
+}
 .mode-opt.selected {
   border-color: var(--accent);
   background: var(--card-2);
@@ -1190,4 +1193,585 @@ button:disabled {
   font-size: 14px;
   color: var(--muted);
   line-height: 1.5;
+}
+
+/* ==================== REGOLE — STORY VIEWER (stile "storie") ==================== */
+.rstory {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: grid;
+  place-items: center;
+  background: rgba(4, 5, 14, 0.72);
+  backdrop-filter: blur(6px);
+  animation: fade 0.2s ease;
+  padding: 14px;
+}
+.rstory.hidden {
+  display: none;
+}
+/* card con sfondo visibile tutt'attorno: un tap fuori chiude */
+.rstory-frame {
+  position: relative;
+  width: 100%;
+  max-width: 430px;
+  height: 100%;
+  max-height: 780px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: radial-gradient(130% 90% at 50% -10%, #2a2f61 0%, #14163266 55%, transparent 100%),
+    linear-gradient(180deg, #171a38 0%, #0c0e20 100%);
+  border-radius: 26px;
+  border: 1px solid var(--line);
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.65);
+  touch-action: none;
+}
+
+/* dadi decorativi giganti sullo sfondo */
+.rstory-deco {
+  position: absolute;
+  opacity: 0.07;
+  filter: blur(1px);
+  pointer-events: none;
+  z-index: 0;
+}
+.rstory-deco-a {
+  top: 16%;
+  left: -34px;
+  animation: rfloat 11s ease-in-out infinite;
+}
+.rstory-deco-b {
+  bottom: 9%;
+  right: -30px;
+  animation: rfloat 9s ease-in-out 1.2s infinite reverse;
+}
+.rstory-deco .die {
+  --die-size: 130px;
+}
+@keyframes rfloat {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-14deg);
+  }
+  50% {
+    transform: translateY(-26px) rotate(9deg);
+  }
+}
+
+/* pallini di avanzamento in basso: evidenziano la slide corrente sul totale */
+.rstory-dots {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0 16px;
+  position: relative;
+  z-index: 5;
+}
+.rstory-dots i {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.22);
+  transition: background 0.25s, transform 0.25s, box-shadow 0.25s;
+}
+.rstory-dots i.done {
+  background: rgba(255, 209, 102, 0.45);
+}
+.rstory-dots i.cur {
+  background: var(--gold);
+  transform: scale(1.4);
+  box-shadow: 0 0 8px rgba(255, 209, 102, 0.6);
+}
+
+.rstory-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 4px;
+  position: relative;
+  z-index: 5;
+}
+.rstory-mode {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--gold);
+  border: 1px solid rgba(255, 209, 102, 0.5);
+  border-radius: 999px;
+  padding: 5px 12px;
+  background: rgba(255, 209, 102, 0.08);
+}
+.rstory-close {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text);
+  font-size: 15px;
+  padding: 0;
+  display: grid;
+  place-items: center;
+}
+.rstory-close:active {
+  background: rgba(255, 255, 255, 0.18);
+}
+
+/* zone tap (prev/next) sopra la slide, sotto header e CTA */
+.rstory-tap {
+  position: absolute;
+  top: 72px;
+  bottom: 0;
+  z-index: 3;
+  cursor: pointer;
+}
+.rstory-tap-left {
+  left: 0;
+  width: 36%;
+}
+.rstory-tap-right {
+  right: 0;
+  width: 64%;
+}
+
+/* hint in home: le regole si aprono toccando una modalità */
+.mode-hint {
+  font-size: 12px;
+  color: var(--muted);
+  text-align: center;
+  margin: 10px 0 2px;
+}
+
+/* freccette laterali: indicano che si può scorrere (decorative, i tap passano alle zone) */
+.rstory-arrow {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  z-index: 4;
+  pointer-events: none;
+  font-size: 34px;
+  line-height: 1;
+  font-weight: 300;
+  color: rgba(255, 255, 255, 0.55);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
+  transition: opacity 0.25s;
+}
+.rstory-arrow.off {
+  opacity: 0;
+}
+.rstory-arrow-left {
+  left: 10px;
+}
+.rstory-arrow-right {
+  right: 10px;
+  animation: rnudge 1.8s ease-in-out infinite;
+}
+@keyframes rnudge {
+  0%,
+  100% {
+    transform: translateY(-50%) translateX(0);
+  }
+  50% {
+    transform: translateY(-50%) translateX(4px);
+  }
+}
+
+.rstory-hint {
+  position: absolute;
+  bottom: 42px;
+  left: 0;
+  right: 0;
+  text-align: center;
+  font-size: 12px;
+  color: var(--muted);
+  letter-spacing: 0.04em;
+  z-index: 4;
+  pointer-events: none;
+  animation: rhint 2.2s ease-in-out infinite;
+  transition: opacity 0.3s;
+}
+.rstory-hint.gone {
+  opacity: 0 !important;
+  animation: none;
+}
+@keyframes rhint {
+  0%,
+  100% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* ---------- slide ---------- */
+/* niente z-index qui: creerebbe uno stacking context che intrappola la CTA sotto le zone tap */
+.rstory-stage {
+  flex: 1;
+  position: relative;
+  display: flex;
+  min-height: 0;
+}
+.rslide {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 16px;
+  padding: 4px 26px 18px;
+  text-align: center;
+  animation: rslide-in 0.32s cubic-bezier(0.2, 0.8, 0.3, 1);
+  min-height: 0;
+  overflow: hidden;
+}
+.rslide.back {
+  animation-name: rslide-back;
+}
+@keyframes rslide-in {
+  from {
+    opacity: 0;
+    transform: translateX(46px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes rslide-back {
+  from {
+    opacity: 0;
+    transform: translateX(-46px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+.rs-step {
+  color: var(--gold);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  margin: 0;
+}
+.rs-title {
+  font-size: 29px;
+  font-weight: 800;
+  line-height: 1.12;
+  margin: 0;
+}
+.rs-text {
+  color: var(--muted);
+  font-size: 15.5px;
+  line-height: 1.55;
+  margin: 0;
+  max-width: 320px;
+}
+.rs-text strong {
+  color: var(--text);
+}
+.rs-text em {
+  color: var(--gold);
+  font-style: normal;
+  font-weight: 700;
+}
+.rs-fig {
+  min-height: 150px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+}
+
+/* dado inclinato con ingresso "pop" ritardato */
+.rs-tilt {
+  display: inline-block;
+  transform: rotate(var(--r, 0deg));
+  animation: rpop 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 80ms + 150ms);
+}
+@keyframes rpop {
+  from {
+    opacity: 0;
+    transform: rotate(var(--r, 0deg)) translateY(18px) scale(0.35);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(var(--r, 0deg));
+  }
+}
+.rs-fan {
+  display: flex;
+  align-items: center;
+}
+.rs-fan .rs-tilt {
+  margin: 0 -3px;
+}
+
+/* pill / chip generici */
+.rs-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 7px 14px;
+}
+.rs-pill b {
+  color: var(--text);
+}
+
+/* chip-dichiarazione (quantità × dado) */
+.rs-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 9px 18px;
+  font-size: 21px;
+  font-weight: 800;
+  animation: rpop 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 140ms + 150ms);
+}
+.rs-chip.ok {
+  border-color: var(--good);
+  box-shadow: 0 0 14px rgba(55, 214, 122, 0.18);
+}
+.rs-chip.base {
+  border-color: var(--accent);
+}
+.rs-chip .rs-note {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.rs-chip.ok .rs-note {
+  color: var(--good);
+}
+.rs-ladder {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+.rs-ladder .rs-or {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+}
+
+/* i tuoi dadi (slide 2) */
+.rs-mine {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+}
+.rs-minelabel {
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+/* la chiamata al centro (slide 2) */
+.rs-call {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 7px;
+}
+.rs-bubble {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--accent);
+  border-radius: 18px;
+  padding: 11px 18px;
+  font-size: 26px;
+  font-weight: 800;
+  box-shadow: 0 0 22px rgba(108, 123, 255, 0.35);
+}
+/* la parte "parlata" della chiamata, piccola accanto ai numeri */
+.rs-bsay {
+  font-size: 14px;
+  font-weight: 600;
+  font-style: italic;
+  color: var(--muted);
+  align-self: flex-end;
+  padding-bottom: 4px;
+}
+/* tavolo con dadi nascosti (slide 2) */
+.rs-table {
+  display: flex;
+  gap: 12px;
+  max-width: 100%;
+}
+.rs-seat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 14px;
+}
+.rs-name {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+.rs-seat .hidden-dice {
+  display: flex;
+  gap: 2px;
+}
+.rs-mystery {
+  width: 17px;
+  height: 17px;
+  border-radius: 5px;
+  background: linear-gradient(150deg, var(--accent), var(--accent-2));
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 10px;
+  font-weight: 800;
+  display: grid;
+  place-items: center;
+  box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.35), 0 3px 6px rgba(0, 0, 0, 0.35);
+}
+
+/* bottone "Dubito!" replica (slide 4) */
+.rs-doubt {
+  background: var(--danger);
+  color: #fff;
+  font-weight: 800;
+  font-size: 19px;
+  padding: 12px 30px;
+  border-radius: 14px;
+  box-shadow: 0 0 26px rgba(255, 93, 115, 0.4);
+  animation: rpulse 1.7s ease-in-out infinite;
+  pointer-events: none;
+}
+@keyframes rpulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.06);
+  }
+}
+/* rivelazione (slide "Dubito!"): i dadi di ogni giocatore, riga per riga */
+.rs-rrows {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  width: 100%;
+  max-width: 290px;
+}
+.rs-rrow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 14px;
+  animation: rpop 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 130ms + 150ms);
+}
+.rs-rname {
+  font-size: 14px;
+  font-weight: 700;
+  text-align: left;
+}
+.rs-rdice {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+}
+
+/* esiti (slide 5) */
+.rs-verdicts {
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+  width: 100%;
+  max-width: 330px;
+}
+.rs-verdict {
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.4;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 10px 14px;
+  animation: rpop 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) backwards;
+  animation-delay: calc(var(--i, 0) * 140ms + 150ms);
+}
+.rs-verdict .rs-ico {
+  font-size: 21px;
+  flex: none;
+}
+.rs-verdict.good {
+  border-color: rgba(55, 214, 122, 0.55);
+}
+.rs-verdict.bad {
+  border-color: rgba(255, 93, 115, 0.55);
+}
+.rs-verdict b {
+  color: var(--text);
+}
+.rs-verdict span {
+  color: var(--muted);
+}
+.rs-minis {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+/* CTA finale — deve stare sopra le zone tap */
+.rs-cta {
+  position: relative;
+  z-index: 4;
+  margin-top: 4px;
+  width: auto;
+  padding: 14px 34px;
+  animation: rpop 0.5s cubic-bezier(0.2, 1.4, 0.4, 1) 0.45s backwards;
+}
+
+@media (max-height: 640px) {
+  .rs-fig {
+    min-height: 110px;
+    gap: 10px;
+  }
+  .rs-title {
+    font-size: 24px;
+  }
+  .rslide {
+    gap: 11px;
+  }
 }

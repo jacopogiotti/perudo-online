@@ -24,7 +24,7 @@
  *  - Non si può APRIRE dichiarando gli 1.
  *  - Conversioni: numero→1 = ceil(q/2); 1→numero = q*2+1; 1→1 = q maggiore.
  *
- * Palifico (jolly/calza, non a 2 giocatori, una volta a partita per giocatore):
+ * Palifico (jolly/calza, una volta a partita per giocatore):
  *  - Chi entra nel round con 1 dado (la prima volta) apre un round palifico.
  *  - Gli 1 NON sono wild e diventano una faccia normale puntabile.
  *  - Il valore è bloccato dall'apertura; solo chi ha 1 dado può cambiarlo (con
@@ -452,7 +452,6 @@ class Game {
     const opener = this.players[this.roundStarterIndex];
     const eligible =
       this.mode !== 'standard' &&
-      this._aliveCount() > 2 &&
       opener &&
       opener.diceCount === 1 &&
       !opener.hasPalificoed;

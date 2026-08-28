@@ -40,14 +40,15 @@
               <span class="mode-desc">Rilancia o dubita. Nessun jolly.</span>
             </button>
             <button type="button" class="mode-opt" data-mode="jolly">
-              <span class="mode-name">Jolly <span class="mode-pip"></span><small class="mode-test">(test)</small></span>
+              <span class="mode-name">Jolly <span class="mode-pip"></span></span>
               <span class="mode-desc">Gli 1 sono jolly + Palifico.</span>
             </button>
-            <button type="button" class="mode-opt" data-mode="calza">
-              <span class="mode-name">Calza <small class="mode-test">(test)</small></span>
+            <button type="button" class="mode-opt dev" data-mode="calza">
+              <span class="mode-name">Calza <small class="mode-test">(in sviluppo)</small></span>
               <span class="mode-desc">Jolly, Palifico e la mossa "Calza".</span>
             </button>
           </div>
+          <p class="mode-hint">👆 Tocca una modalità per scoprirne le regole</p>
           <button id="btn-create" class="primary">Crea tavolo</button>
         </div>
 
@@ -232,6 +233,25 @@
           </div>
           <p class="muted" id="pause-hint"></p>
           <button id="pause-action" class="danger-ghost"></button>
+        </div>
+      </div>
+
+      <!-- ============ REGOLE (story viewer) ============ -->
+      <div id="rules-story" class="rstory hidden" role="dialog" aria-modal="true" aria-label="Regole">
+        <div class="rstory-frame" id="rstory-frame">
+          <div class="rstory-deco rstory-deco-a" aria-hidden="true"></div>
+          <div class="rstory-deco rstory-deco-b" aria-hidden="true"></div>
+          <div class="rstory-head">
+            <span class="rstory-mode" id="rstory-mode">Standard</span>
+            <button id="rstory-close" class="rstory-close" aria-label="Chiudi">✕</button>
+          </div>
+          <div class="rstory-stage" id="rstory-stage"></div>
+          <div class="rstory-dots" id="rstory-dots"></div>
+          <div class="rstory-tap rstory-tap-left" id="rstory-prev" aria-hidden="true"></div>
+          <div class="rstory-tap rstory-tap-right" id="rstory-next" aria-hidden="true"></div>
+          <span class="rstory-arrow rstory-arrow-left" id="rstory-arrow-left" aria-hidden="true">‹</span>
+          <span class="rstory-arrow rstory-arrow-right" id="rstory-arrow-right" aria-hidden="true">›</span>
+          <div class="rstory-hint" id="rstory-hint">Tocca per continuare</div>
         </div>
       </div>
 

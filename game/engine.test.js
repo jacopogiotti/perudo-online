@@ -235,7 +235,7 @@ test('jolly: il dubito conta anche gli 1', () => {
 
 // ---------------- PALIFICO ----------------
 
-test('palifico: si attiva quando l\'apertura ha 1 dado (prima volta), non a 2 giocatori', () => {
+test('palifico: si attiva quando l\'apertura ha 1 dado (prima volta)', () => {
   // 3 giocatori: A con 1 dado apre e va in palifico.
   const g = new Game(
     [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }, { id: 'c', name: 'C' }],
@@ -314,6 +314,22 @@ test('palifico: una sola volta a partita', () => {
   g.startNextRound();
   assert.strictEqual(g.palifico, false); // niente secondo palifico
   assert.strictEqual(g.palificoPending, false); // nemmeno la scelta
+});
+
+test('palifico: disponibile anche in testa a testa (2 giocatori)', () => {
+  const g = new Game([{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }], 5, {
+    starterIndex: 0,
+    mode: 'jolly',
+  });
+  g.players[0].diceCount = 1; // A resta con 1 dado
+  g.phase = 'reveal';
+  g._nextStarterIndex = 0;
+  assert.strictEqual(g.startNextRound().ok, true);
+  assert.strictEqual(g.palificoPending, true);
+  assert.strictEqual(g.palificoPendingId, 'a');
+  assert.strictEqual(g.choosePalifico('a', true).ok, true);
+  assert.strictEqual(g.palifico, true);
+  assert.strictEqual(g.wildActive(), false); // niente jolly in palifico
 });
 
 // ---------------- CALZA ----------------

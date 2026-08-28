@@ -69,6 +69,9 @@ class RoomManager {
     if (!name) return { error: 'Inserisci un nome.' };
     const dice = Math.max(1, Math.min(5, parseInt(dicePerPlayer, 10) || 5));
     const gameMode = ['standard', 'jolly', 'calza'].includes(mode) ? mode : 'standard';
+    if (gameMode === 'calza') {
+      return { error: 'La modalità Calza è in fase di sviluppo.' };
+    }
     const code = this._freshCode();
     const host = {
       id: newId(),
