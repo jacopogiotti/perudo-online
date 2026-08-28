@@ -1191,3 +1191,105 @@ button:disabled {
   color: var(--muted);
   line-height: 1.5;
 }
+
+/* ---------- Card regole (carosello swipabile) ---------- */
+.rules-card {
+  margin-top: 14px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 12px;
+}
+.rules-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+}
+.rules-head .rh-title { font-weight: 700; font-size: 14px; }
+.rules-head .rh-hint { font-size: 12px; color: var(--muted); }
+.rules-track {
+  display: flex;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-behavior: smooth;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.rules-track::-webkit-scrollbar { display: none; }
+.rules-slide {
+  flex: 0 0 100%;
+  scroll-snap-align: center;
+  box-sizing: border-box;
+  padding: 4px;
+}
+.rules-slide-in {
+  min-height: 186px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 8px;
+  padding: 6px 4px;
+}
+.rs-fig {
+  min-height: 82px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+.rs-title { margin: 2px 0 0; font-weight: 800; font-size: 16px; }
+.rs-text { margin: 0; font-size: 13px; color: var(--muted); line-height: 1.5; }
+.rs-step { margin: 2px 0 0; font-size: 11px; color: var(--muted); letter-spacing: 2px; }
+.rules-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  margin-top: 4px;
+}
+.rules-arrow {
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  border-radius: 50%;
+  width: 34px;
+  height: 34px;
+  font-size: 20px;
+  line-height: 1;
+  color: var(--text);
+  display: grid;
+  place-items: center;
+  flex: none;
+}
+.rules-dots { display: flex; gap: 6px; }
+.rules-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--line);
+  border: none;
+  padding: 0;
+}
+.rules-dot.active { background: var(--accent); }
+
+/* figurine (componenti del gioco) */
+.rfig-row { display: flex; gap: 10px; justify-content: center; }
+.rfig-card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 8px 10px;
+}
+.rfig-top { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.rfig-top .avatar { width: 26px; height: 26px; font-size: 12px; }
+.rfig-name { font-size: 12px; font-weight: 600; }
+.rfig-bid { display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 26px; font-weight: 800; }
+.rfig-raise { display: flex; flex-direction: column; gap: 10px; }
+.rfig-line { display: flex; align-items: center; justify-content: center; gap: 6px; font-weight: 800; font-size: 15px; }
+.rfig-arrow { color: var(--accent); font-size: 20px; font-weight: 800; }
+.rfig-reveal { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+.rfig-dice { display: flex; gap: 5px; flex-wrap: wrap; justify-content: center; }
+.rfig-count { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 5px; flex-wrap: wrap; justify-content: center; }
+.rfig-lose { display: flex; align-items: center; gap: 8px; }
+.rfig-minus { color: var(--danger); font-weight: 700; font-size: 13px; }
