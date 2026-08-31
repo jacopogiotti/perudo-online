@@ -487,10 +487,26 @@ $('#btn-share').addEventListener('click', async () => {
   }
 });
 
-$('#btn-start').addEventListener('click', () => {
+function startGameNow() {
   socket.emit('startGame', {}, (res) => {
     if (!res.ok) toast(res.error);
   });
+}
+$('#btn-start').addEventListener('click', () => {
+  const room = state.room;
+  // In due con Calza Official la Calza non è mai chiamabile: avvisa l'host.
+  if (room && room.mode === 'calza' && room.calzaRule === 'official' && room.players.length === 2) {
+    $('#calza-warn').classList.remove('hidden');
+    return;
+  }
+  startGameNow();
+});
+$('#calza-warn-start').addEventListener('click', () => {
+  $('#calza-warn').classList.add('hidden');
+  startGameNow();
+});
+$('#calza-warn-back').addEventListener('click', () => {
+  $('#calza-warn').classList.add('hidden');
 });
 
 function renderLobby(room) {
