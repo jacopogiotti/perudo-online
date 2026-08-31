@@ -523,14 +523,15 @@ function renderLobby(room) {
 
   const hostCtrl = $('#lobby-host-controls');
   const guestNote = $('#lobby-guest-note');
+  const modeInfo =
+    room.mode === 'calza'
+      ? `Calza ${room.calzaRule === 'house' ? '🍻 House' : '🏛️ Official'}`
+      : `Modalità ${MODE_NAMES[room.mode] || room.mode}`;
+  const tableInfo = `${room.dicePerPlayer} dadi a testa · ${modeInfo}`;
   if (state.me.isHost) {
     hostCtrl.classList.remove('hidden');
     guestNote.classList.add('hidden');
-    const modeInfo =
-      room.mode === 'calza'
-        ? `Calza ${room.calzaRule === 'house' ? '🍻 House' : '🏛️ Official'}`
-        : `Modalità ${MODE_NAMES[room.mode] || room.mode}`;
-    $('#lobby-dice-info').textContent = `${room.dicePerPlayer} dadi a testa · ${modeInfo}`;
+    $('#lobby-dice-info').textContent = tableInfo;
     const enough = room.players.length >= room.minPlayers;
     $('#btn-start').disabled = !enough;
     $('#start-hint').textContent = enough
@@ -539,6 +540,7 @@ function renderLobby(room) {
   } else {
     hostCtrl.classList.add('hidden');
     guestNote.classList.remove('hidden');
+    $('#lobby-guest-info').textContent = tableInfo;
   }
 }
 
