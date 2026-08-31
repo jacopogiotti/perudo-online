@@ -372,14 +372,16 @@ test('calza: sbagliata -> chi calza perde un dado', () => {
   assert.strictEqual(g.players[3].alive, false);
 });
 
-test('calza: chiunque tranne il dichiarante (anche di turno, anche a dadi pieni)', () => {
-  // Chi è di turno (B) può calzare, anche se ha tutti i dadi.
+test('calza: chiunque tranne il dichiarante, ma serve aver perso un dado', () => {
   let g = calzaSetup(2);
   assert.strictEqual(g.placeBid('a', 4, 5).ok, true); // turno: B; successivo: C
   assert.strictEqual(g.calza('a').ok, false); // dichiarante escluso
-  assert.strictEqual(g.calza('b').ok, true);
-  // Anche il giocatore successivo (C) può.
+  assert.strictEqual(g.calza('b').ok, false); // B a dadi pieni
+  g.players[1].dice = [5]; g.players[1].diceCount = 1; // B perde un dado
+  assert.strictEqual(g.calza('b').ok, true); // ora può, anche se di turno
+  // Anche il giocatore successivo (C) può, se ha perso un dado.
   g = calzaSetup(2);
+  g.players[2].dice = [2]; g.players[2].diceCount = 1;
   assert.strictEqual(g.placeBid('a', 4, 5).ok, true);
   assert.strictEqual(g.calza('c').ok, true);
 });
@@ -399,6 +401,7 @@ test('calza: possibile anche in testa a testa (2 giocatori)', () => {
     starterIndex: 0,
     mode: 'calza',
   });
+  g2.players[1].dice = [3, 3]; g2.players[1].diceCount = 2; // B ha perso un dado
   g2.placeBid('a', 1, 3);
   assert.strictEqual(g2.calza('a').ok, false); // il dichiarante mai
   assert.strictEqual(g2.calza('b').ok, true); // l'avversario sì (è di turno)

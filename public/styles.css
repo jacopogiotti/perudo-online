@@ -1092,6 +1092,10 @@ button:disabled {
   color: var(--muted);
   line-height: 1.3;
 }
+.mode-ico {
+  font-size: 13px;
+  line-height: 1;
+}
 .mode-pip {
   width: 12px;
   height: 12px;

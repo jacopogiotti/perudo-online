@@ -33,8 +33,8 @@
  * Calza (solo modalità 'calza', gestione fuori turno lato server):
  *  - Dichiara che l'ultima scommessa è ESATTA. Esatta → recuperi un dado (max
  *    dicePerPlayer). Sbagliata → perdi un dado. Il round dopo apre chi ha calzato.
- *  - Può calzare chiunque tranne il dichiarante (anche di turno, anche a dadi
- *    pieni, anche in testa a testa). Vietata durante il Palifico.
+ *  - Può calzare chiunque tranne il dichiarante (anche di turno, anche in testa
+ *    a testa), ma solo chi ha perso almeno un dado. Vietata durante il Palifico.
  */
 
 const MIN_FACE = 1;
@@ -378,10 +378,14 @@ class Game {
     if (!caller || !caller.alive) {
       return { ok: false, reason: 'Non puoi calzare.' };
     }
-    // Regola ufficiale: può calzare CHIUNQUE tranne il dichiarante — anche chi è
-    // di turno, anche a dadi pieni, anche in testa a testa.
+    // Può calzare chiunque tranne il dichiarante — anche chi è di turno, anche
+    // in testa a testa — ma solo se ha perso almeno un dado: il premio non può
+    // superare i dadi di partenza.
     if (playerId === this.currentBid.playerId) {
       return { ok: false, reason: 'Non puoi calzare la tua stessa dichiarazione.' };
+    }
+    if (caller.diceCount >= this.dicePerPlayer) {
+      return { ok: false, reason: 'Hai già tutti i dadi: puoi calzare solo se ne hai perso almeno uno.' };
     }
     if (
       expectedBid &&

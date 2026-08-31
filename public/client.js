@@ -263,7 +263,7 @@ const RULES = {
     {
       step: 'La mossa',
       t: 'Ferma il giro, quando vuoi',
-      d: 'Pensi che l\'ultima dichiarazione sia <em>esatta</em>? Calza! Può farlo <strong>chiunque tranne il dichiarante</strong>, in qualsiasi momento — anche se non è il tuo turno.',
+      d: 'Pensi che l\'ultima dichiarazione sia <em>esatta</em>? Calza! Può farlo <strong>chiunque tranne il dichiarante</strong> — basta aver <em>perso almeno un dado</em> — anche se non è il tuo turno.',
       fig: () => `
         <div class="rs-call">
           <span class="rs-minelabel">Anna dichiara</span>
@@ -681,7 +681,7 @@ function renderGame(room) {
 }
 
 /** Posso chiamare Calza adesso? (specchio della logica server)
- *  Regola ufficiale: chiunque tranne il dichiarante, anche di turno. */
+ *  Chiunque tranne il dichiarante, anche di turno — ma serve aver perso un dado. */
 function calzaEligible(room) {
   const g = room.game;
   if (!g || room.mode !== 'calza') return false;
@@ -690,6 +690,7 @@ function calzaEligible(room) {
   const me = room.players.find((p) => p.id === state.me.playerId);
   if (!me || !me.alive) return false;
   if (state.me.playerId === g.currentBid.playerId) return false; // non il dichiarante
+  if (me.diceCount >= room.dicePerPlayer) return false; // devi aver perso un dado
   return true;
 }
 
