@@ -334,12 +334,13 @@ test('palifico: disponibile anche in testa a testa (2 giocatori)', () => {
 
 // ---------------- CALZA ----------------
 
-/** Prepara un tavolo calza a 4 giocatori con dadi e conteggi impostati a mano. */
-function calzaSetup(dDiceCount) {
+/** Prepara un tavolo calza a 4 giocatori con dadi e conteggi impostati a mano.
+ *  calzaRule di default 'house' (comportamento più permissivo, usato dai test storici). */
+function calzaSetup(dDiceCount, calzaRule) {
   const g = new Game(
     [{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }, { id: 'c', name: 'C' }, { id: 'd', name: 'D' }],
     2,
-    { starterIndex: 0, mode: 'calza' }
+    { starterIndex: 0, mode: 'calza', calzaRule: calzaRule || 'house' }
   );
   // Board coerente (dice array == diceCount). countWild(5) = 4.
   g.players[0].dice = [5, 5]; g.players[0].diceCount = 2; // A
@@ -396,10 +397,21 @@ test('calza: il dichiarante non può calzare la propria dichiarazione', () => {
   assert.strictEqual(g.calza('d').ok, true); // D invece può
 });
 
-test('calza: possibile anche in testa a testa (2 giocatori)', () => {
+test('calza: versione official — chi risponde alla dichiarazione non può calzare', () => {
+  const g = calzaSetup(1, 'official'); // D ha 1 dado
+  g.players[1].dice = [5]; g.players[1].diceCount = 1; // anche B ha perso un dado
+  assert.strictEqual(g.placeBid('a', 4, 5).ok, true); // A dichiara; risponde B
+  const r = g.calza('b'); // B risponde: vietato in Official
+  assert.strictEqual(r.ok, false);
+  assert.match(r.reason, /Official/);
+  assert.strictEqual(g.calza('d').ok, true); // D, fuori dallo scambio, può
+});
+
+test('calza: possibile anche in testa a testa (2 giocatori, versione house)', () => {
   const g2 = new Game([{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }], 3, {
     starterIndex: 0,
     mode: 'calza',
+    calzaRule: 'house',
   });
   g2.players[1].dice = [3, 3]; g2.players[1].diceCount = 2; // B ha perso un dado
   g2.placeBid('a', 1, 3);

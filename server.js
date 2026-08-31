@@ -54,6 +54,7 @@ function roomStatePayload(room) {
     status: room.status,
     dicePerPlayer: room.dicePerPlayer,
     mode: room.mode || 'standard',
+    calzaRule: room.calzaRule || 'official',
     maxPlayers: MAX_PLAYERS,
     minPlayers: MIN_PLAYERS,
     hostId: room.hostId,
@@ -71,6 +72,7 @@ function roomStatePayload(room) {
           starterPlayerId: gameState.starterPlayerId,
           winnerId: gameState.winnerId,
           mode: gameState.mode,
+          calzaRule: gameState.calzaRule,
           wild: gameState.wild,
           palifico: gameState.palifico,
           palificoPlayerId: gameState.palificoPlayerId,
@@ -198,8 +200,8 @@ function ack(cb, data) {
 
 io.on('connection', (socket) => {
   // --- Creazione tavolo (host) ---
-  socket.on('createRoom', ({ hostName, dicePerPlayer, mode } = {}, cb) => {
-    const res = manager.createRoom(hostName, dicePerPlayer, mode);
+  socket.on('createRoom', ({ hostName, dicePerPlayer, mode, calzaRule } = {}, cb) => {
+    const res = manager.createRoom(hostName, dicePerPlayer, mode, calzaRule);
     if (res.error) return ack(cb, { ok: false, error: res.error });
     const { room, player } = res;
     player.socketId = socket.id;

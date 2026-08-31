@@ -33,8 +33,9 @@
  * Calza (solo modalità 'calza', gestione fuori turno lato server):
  *  - Dichiara che l'ultima scommessa è ESATTA. Esatta → recuperi un dado (max
  *    dicePerPlayer). Sbagliata → perdi un dado. Il round dopo apre chi ha calzato.
- *  - Può calzare chiunque tranne il dichiarante (anche di turno, anche in testa
- *    a testa), ma solo chi ha perso almeno un dado. Vietata durante il Palifico.
+ *  - Può calzare solo chi ha perso almeno un dado. Vietata durante il Palifico.
+ *  - Versione 'official': esclusi il dichiarante e chi risponde alla
+ *    dichiarazione. Versione 'house': escluso solo il dichiarante.
  */
 
 const MIN_FACE = 1;
@@ -179,6 +180,9 @@ class Game {
   constructor(seats, dicePerPlayer, opts = {}) {
     this.rng = opts.rng || defaultRng;
     this.mode = MODES.includes(opts.mode) ? opts.mode : 'standard';
+    // Versione della Calza: 'official' = niente calza per dichiarante e per chi
+    // risponde; 'house' = escluso solo il dichiarante.
+    this.calzaRule = opts.calzaRule === 'house' ? 'house' : 'official';
     this.dicePerPlayer = Math.max(1, Math.min(5, dicePerPlayer | 0));
     this.players = seats.map((s) => ({
       id: s.id,
@@ -387,6 +391,13 @@ class Game {
     if (caller.diceCount >= this.dicePerPlayer) {
       return { ok: false, reason: 'Hai già tutti i dadi: puoi calzare solo se ne hai perso almeno uno.' };
     }
+    // Versione Official: nemmeno chi deve rispondere alla dichiarazione può calzare.
+    if (this.calzaRule === 'official') {
+      const turnP = this.currentPlayer();
+      if (turnP && playerId === turnP.id) {
+        return { ok: false, reason: 'Versione Official: chi risponde alla dichiarazione non può calzare.' };
+      }
+    }
     if (
       expectedBid &&
       (expectedBid.quantity !== this.currentBid.quantity || expectedBid.face !== this.currentBid.face)
@@ -503,6 +514,7 @@ class Game {
       palificoPendingId: this.palificoPendingId,
       lockedFace: this.lockedFace,
       nextPlayerId: this._nextPlayerId(),
+      calzaRule: this.calzaRule,
       currentBid: this.currentBid
         ? { quantity: this.currentBid.quantity, face: this.currentBid.face, playerId: this.currentBid.playerId }
         : null,

@@ -58,6 +58,7 @@ const state = {
   chatOpen: false,
   unread: 0,
   mode: 'standard', // modalità scelta in creazione: standard | jolly | calza
+  calzaRule: 'official', // versione della Calza scelta in creazione: official | house
 };
 
 // ---------- schermate ----------
@@ -294,6 +295,17 @@ const RULES = {
           <div class="rs-verdict good" style="--i:0"><span class="rs-ico">${dieEl(1, 'die-xs', '', true)}</span><span>I <b>jolly contano</b>: la conta è la stessa del Dubito</span></div>
           <div class="rs-verdict bad" style="--i:1"><span class="rs-ico">🚫</span><span>Niente Calza durante il <b>Palifico</b></span></div>
         </div>`,
+    },
+    {
+      step: 'Le versioni',
+      t: 'Official o House?',
+      d: '',
+      fig: () => `
+        <div class="rs-verdicts">
+          <div class="rs-verdict" style="--i:0"><span class="rs-ico">🏛️</span><span><b>Official</b>: non possono calzare il dichiarante e <b>chi gli risponde</b></span></div>
+          <div class="rs-verdict good" style="--i:1"><span class="rs-ico">🍻</span><span><b>House</b>: escluso solo il dichiarante — <b>anche chi risponde</b> può calzare</span></div>
+        </div>`,
+      foot: () => `<span class="rs-pill">⚙️ La versione la sceglie <b>chi crea il tavolo</b></span>`,
       cta: 'Tutto chiaro, si gioca! 🎲',
     },
   ],
@@ -417,7 +429,18 @@ document.querySelectorAll('#mode-picker .mode-opt').forEach((btn) => {
     document.querySelectorAll('#mode-picker .mode-opt').forEach((b) =>
       b.classList.toggle('selected', b === btn)
     );
+    $('#calza-rule').classList.toggle('hidden', state.mode !== 'calza');
     rulesOpen(state.mode);
+  });
+});
+
+// Versione della Calza (Official / House), scelta dall'host.
+document.querySelectorAll('#calza-rule .cr-opt').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    state.calzaRule = btn.dataset.rule;
+    document.querySelectorAll('#calza-rule .cr-opt').forEach((b) =>
+      b.classList.toggle('selected', b === btn)
+    );
   });
 });
 
@@ -425,7 +448,10 @@ $('#btn-create').addEventListener('click', () => {
   const hostName = $('#host-name').value;
   const dicePerPlayer = $('#dice-count').value;
   if (!hostName.trim()) return toast('Inserisci il tuo nome.');
-  socket.emit('createRoom', { hostName, dicePerPlayer, mode: state.mode }, (res) => {
+  socket.emit(
+    'createRoom',
+    { hostName, dicePerPlayer, mode: state.mode, calzaRule: state.calzaRule },
+    (res) => {
     if (!res.ok) return toast(res.error);
     state.me = { code: res.code, playerId: res.playerId, isHost: true, token: res.token };
     saveSession();
@@ -500,7 +526,9 @@ function renderLobby(room) {
   if (state.me.isHost) {
     hostCtrl.classList.remove('hidden');
     guestNote.classList.add('hidden');
-    $('#lobby-dice-info').textContent = `${room.dicePerPlayer} dadi a testa`;
+    const ruleInfo =
+      room.mode === 'calza' ? ` · Calza ${room.calzaRule === 'house' ? '🍻 House' : '🏛️ Official'}` : '';
+    $('#lobby-dice-info').textContent = `${room.dicePerPlayer} dadi a testa${ruleInfo}`;
     const enough = room.players.length >= room.minPlayers;
     $('#btn-start').disabled = !enough;
     $('#start-hint').textContent = enough
@@ -691,6 +719,7 @@ function calzaEligible(room) {
   if (!me || !me.alive) return false;
   if (state.me.playerId === g.currentBid.playerId) return false; // non il dichiarante
   if (me.diceCount >= room.dicePerPlayer) return false; // devi aver perso un dado
+  if (g.calzaRule === 'official' && state.me.playerId === g.turnPlayerId) return false; // Official: chi risponde no
   return true;
 }
 

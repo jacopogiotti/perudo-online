@@ -64,11 +64,12 @@ class RoomManager {
     return code;
   }
 
-  createRoom(hostName, dicePerPlayer, mode) {
+  createRoom(hostName, dicePerPlayer, mode, calzaRule) {
     const name = sanitizeName(hostName);
     if (!name) return { error: 'Inserisci un nome.' };
     const dice = Math.max(1, Math.min(5, parseInt(dicePerPlayer, 10) || 5));
     const gameMode = ['standard', 'jolly', 'calza'].includes(mode) ? mode : 'standard';
+    const rule = calzaRule === 'house' ? 'house' : 'official';
     const code = this._freshCode();
     const host = {
       id: newId(),
@@ -81,6 +82,7 @@ class RoomManager {
       code,
       dicePerPlayer: dice,
       mode: gameMode, // 'standard' | 'jolly' | 'calza'
+      calzaRule: rule, // versione della Calza: 'official' | 'house'
       status: 'lobby', // 'lobby' | 'playing' | 'finished'
       players: [host],
       game: null,
@@ -196,7 +198,7 @@ class RoomManager {
       return { error: `Servono almeno ${MIN_PLAYERS} giocatori.` };
     }
     const seats = room.players.map((p) => ({ id: p.id, name: p.name }));
-    room.game = new Game(seats, room.dicePerPlayer, { mode: room.mode });
+    room.game = new Game(seats, room.dicePerPlayer, { mode: room.mode, calzaRule: room.calzaRule });
     room.rolled = new Set(); // nuovo round: nessuno ha ancora lanciato
     room.bidLog = []; // storico dichiarazioni azzerato
     room.status = 'playing';
@@ -220,7 +222,7 @@ class RoomManager {
     }
     room.players = active;
     const seats = active.map((p) => ({ id: p.id, name: p.name }));
-    room.game = new Game(seats, room.dicePerPlayer, { mode: room.mode });
+    room.game = new Game(seats, room.dicePerPlayer, { mode: room.mode, calzaRule: room.calzaRule });
     room.rolled = new Set();
     room.bidLog = [];
     room.readyNext = new Set();
