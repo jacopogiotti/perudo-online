@@ -40,6 +40,32 @@ body {
   padding: 20px 16px calc(28px + env(safe-area-inset-bottom));
 }
 
+/* ---------- selettore lingua (home, in alto a destra) ---------- */
+.lang-switch {
+  display: flex;
+  justify-content: flex-end;
+  gap: 6px;
+  margin-bottom: -6px;
+}
+.lang-opt {
+  background: transparent;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  font-size: 20px;
+  line-height: 1;
+  padding: 5px 8px;
+  opacity: 0.4;
+  filter: saturate(0.4);
+  transition: opacity 0.2s, filter 0.2s;
+}
+.lang-opt.selected {
+  opacity: 1;
+  filter: none;
+  background: var(--card);
+  border-color: var(--gold);
+  box-shadow: 0 0 8px rgba(255, 209, 102, 0.3);
+}
+
 /* ---------- screens ---------- */
 .screen {
   display: none;

@@ -15,61 +15,65 @@
     <div id="app">
       <!-- ============ HOME ============ -->
       <section id="screen-home" class="screen active">
+        <div id="lang-switch" class="lang-switch" role="group" aria-label="Lingua / Language">
+          <button type="button" class="lang-opt selected" data-lang="it" aria-label="Italiano">🇮🇹</button>
+          <button type="button" class="lang-opt" data-lang="en" aria-label="English">🇬🇧</button>
+        </div>
         <header class="brand">
           <div class="brand-dice">🎲</div>
           <h1>Perudo</h1>
-          <p class="tagline">Dadi, azzardo e bluff. L'ultimo con un dado vince.</p>
+          <p class="tagline" data-i18n="tagline">Dadi, azzardo e bluff. L'ultimo con un dado vince.</p>
         </header>
 
         <div class="card">
-          <h2>Crea un tavolo</h2>
-          <label for="host-name">Il tuo nome</label>
-          <input id="host-name" type="text" maxlength="20" placeholder="Es. Jacopo" autocomplete="off" />
-          <label for="dice-count">Dadi per giocatore</label>
+          <h2 data-i18n="createTitle">Crea un tavolo</h2>
+          <label for="host-name" data-i18n="yourName">Il tuo nome</label>
+          <input id="host-name" type="text" maxlength="20" placeholder="Es. Jacopo" data-i18n-ph="hostNamePh" autocomplete="off" />
+          <label for="dice-count" data-i18n="dpp">Dadi per giocatore</label>
           <select id="dice-count">
-            <option value="1">1 dado</option>
-            <option value="2">2 dadi</option>
-            <option value="3">3 dadi</option>
-            <option value="4">4 dadi</option>
-            <option value="5" selected>5 dadi</option>
+            <option value="1" data-i18n="die1">1 dado</option>
+            <option value="2" data-i18n="die2">2 dadi</option>
+            <option value="3" data-i18n="die3">3 dadi</option>
+            <option value="4" data-i18n="die4">4 dadi</option>
+            <option value="5" selected data-i18n="die5">5 dadi</option>
           </select>
-          <label>Modalità</label>
+          <label data-i18n="modeLabel">Modalità</label>
           <div id="mode-picker" class="mode-picker">
             <button type="button" class="mode-opt selected" data-mode="standard">
               <span class="mode-name">Standard</span>
-              <span class="mode-desc">Rilancia o dubita. Nessun jolly.</span>
+              <span class="mode-desc" data-i18n="mdStd">Rilancia o dubita. Nessun jolly.</span>
             </button>
             <button type="button" class="mode-opt" data-mode="jolly">
               <span class="mode-name">Jolly <span class="mode-pip"></span></span>
-              <span class="mode-desc">Gli 1 sono jolly + Palifico.</span>
+              <span class="mode-desc" data-i18n="mdJolly">Gli 1 sono jolly + Palifico.</span>
             </button>
             <button type="button" class="mode-opt" data-mode="calza">
               <span class="mode-name">Calza <span class="mode-ico">✋</span></span>
-              <span class="mode-desc">Jolly, Palifico e la mossa "Calza".</span>
+              <span class="mode-desc" data-i18n="mdCalza">Jolly, Palifico e la mossa "Calza".</span>
             </button>
           </div>
           <div id="calza-rule" class="calza-rule hidden">
-            <span class="cr-label">✋ Versione della Calza</span>
+            <span class="cr-label" data-i18n="crLabel">✋ Versione della Calza</span>
             <div class="cr-opts">
               <button type="button" class="cr-opt selected" data-rule="official">
                 <span class="cr-name">🏛️ Official</span>
-                <span class="cr-desc">Chi risponde alla dichiarazione non può calzare.</span>
+                <span class="cr-desc" data-i18n="crOff">Chi risponde alla dichiarazione non può calzare.</span>
               </button>
               <button type="button" class="cr-opt" data-rule="house">
-                <span class="cr-name">🍻 House <span class="cr-tag">🐢 Partita lunga</span></span>
-                <span class="cr-desc">Può calzare anche chi risponde.</span>
+                <span class="cr-name">🍻 House <span class="cr-tag" data-i18n="crTag">🐢 Partita lunga</span></span>
+                <span class="cr-desc" data-i18n="crHouse">Può calzare anche chi risponde.</span>
               </button>
             </div>
           </div>
-          <p class="mode-hint">👆 Tocca una modalità per scoprirne le regole</p>
-          <button id="btn-create" class="primary">Crea tavolo</button>
+          <p class="mode-hint" data-i18n="modeHint">👆 Tocca una modalità per scoprirne le regole</p>
+          <button id="btn-create" class="primary" data-i18n="btnCreate">Crea tavolo</button>
         </div>
 
-        <div class="divider"><span>oppure</span></div>
+        <div class="divider"><span data-i18n="orSep">oppure</span></div>
 
         <div class="card">
-          <h2>Unisciti a un tavolo</h2>
-          <label for="join-code">Codice tavolo</label>
+          <h2 data-i18n="joinTitle">Unisciti a un tavolo</h2>
+          <label for="join-code" data-i18n="codeLabel">Codice tavolo</label>
           <input
             id="join-code"
             type="text"
@@ -79,23 +83,23 @@
             autocapitalize="characters"
             class="code-input"
           />
-          <label for="join-name">Il tuo nome</label>
-          <input id="join-name" type="text" maxlength="20" placeholder="Es. Marco" autocomplete="off" />
-          <button id="btn-join" class="primary">Entra</button>
+          <label for="join-name" data-i18n="yourName">Il tuo nome</label>
+          <input id="join-name" type="text" maxlength="20" placeholder="Es. Marco" data-i18n-ph="joinNamePh" autocomplete="off" />
+          <button id="btn-join" class="primary" data-i18n="btnJoin">Entra</button>
         </div>
       </section>
 
       <!-- ============ LOBBY ============ -->
       <section id="screen-lobby" class="screen">
         <header class="lobby-head">
-          <p class="muted">Codice tavolo</p>
+          <p class="muted" data-i18n="codeLabel">Codice tavolo</p>
           <div class="room-code" id="lobby-code">----</div>
-          <button id="btn-share" class="ghost">📋 Copia link invito</button>
+          <button id="btn-share" class="ghost" data-i18n="btnShare">📋 Copia link invito</button>
         </header>
 
         <div class="card">
           <div class="row-between">
-            <h2>Giocatori</h2>
+            <h2 data-i18n="players">Giocatori</h2>
             <span class="muted" id="lobby-count"></span>
           </div>
           <ul id="lobby-players" class="players-list"></ul>
@@ -103,14 +107,14 @@
 
         <div id="lobby-host-controls" class="card hidden">
           <p class="muted" id="lobby-dice-info"></p>
-          <button id="btn-start" class="primary">Avvia partita</button>
+          <button id="btn-start" class="primary" data-i18n="btnStart">Avvia partita</button>
           <p class="hint" id="start-hint"></p>
-          <button id="btn-close-lobby" class="ghost danger-ghost">Chiudi tavolo</button>
+          <button id="btn-close-lobby" class="ghost danger-ghost" data-i18n="btnCloseLobby">Chiudi tavolo</button>
         </div>
         <div id="lobby-guest-note" class="card hidden">
           <p class="muted" id="lobby-guest-info"></p>
-          <p class="muted">In attesa che l'host avvii la partita…</p>
-          <button id="btn-leave-lobby" class="ghost danger-ghost">Esci dal tavolo</button>
+          <p class="muted" data-i18n="guestWait">In attesa che l'host avvii la partita…</p>
+          <button id="btn-leave-lobby" class="ghost danger-ghost" data-i18n="btnLeaveLobby">Esci dal tavolo</button>
         </div>
       </section>
 
@@ -118,13 +122,13 @@
       <section id="screen-game" class="screen">
         <header class="game-head">
           <div>
-            <span class="muted">Round</span>
+            <span class="muted" data-i18n="round">Round</span>
             <span id="game-round" class="round-num">1</span>
           </div>
           <div class="head-right">
             <div class="room-code small" id="game-code">----</div>
-            <button id="btn-end-game" class="end-btn hidden">⏹ Termina</button>
-            <button id="btn-leave" class="end-btn hidden">🚪 Abbandona</button>
+            <button id="btn-end-game" class="end-btn hidden" data-i18n="btnEnd">⏹ Termina</button>
+            <button id="btn-leave" class="end-btn hidden" data-i18n="btnLeaveGame">🚪 Abbandona</button>
           </div>
         </header>
 
@@ -132,7 +136,7 @@
 
         <div id="rolls-banner" class="rolls-banner hidden">
           <span class="spinner"></span>
-          <span id="rolls-text">In attesa dei lanci…</span>
+          <span id="rolls-text" data-i18n="rollsWait">In attesa dei lanci…</span>
         </div>
 
         <div id="palifico-banner" class="palifico-banner hidden">
@@ -140,49 +144,49 @@
         </div>
 
         <div id="current-bid" class="current-bid">
-          <span class="muted">Ultima dichiarazione</span>
+          <span class="muted" data-i18n="lastBid">Ultima dichiarazione</span>
           <div id="bid-display" class="bid-display">—</div>
         </div>
 
         <div class="my-dice-wrap">
-          <p class="muted" id="my-dice-label">I tuoi dadi</p>
+          <p class="muted" id="my-dice-label" data-i18n="myDice">I tuoi dadi</p>
           <div id="my-dice" class="my-dice"></div>
         </div>
 
         <div id="controls" class="controls hidden">
-          <p class="controls-title" id="controls-title">Tocca a te!</p>
+          <p class="controls-title" id="controls-title" data-i18n="ctrlYourTurn">Tocca a te!</p>
           <div class="bid-builder">
             <div class="stepper">
               <button type="button" id="qty-minus" aria-label="meno">−</button>
-              <div class="stepper-val"><span id="qty-val">1</span><small>quantità</small></div>
+              <div class="stepper-val"><span id="qty-val">1</span><small data-i18n="qty">quantità</small></div>
               <button type="button" id="qty-plus" aria-label="più">+</button>
             </div>
             <div class="face-picker" id="face-picker"></div>
           </div>
           <div class="action-buttons">
-            <button id="btn-bid" class="primary">Rilancia</button>
-            <button id="btn-doubt" class="danger">Dubito!</button>
+            <button id="btn-bid" class="primary" data-i18n="btnBid">Rilancia</button>
+            <button id="btn-doubt" class="danger" data-i18n="btnDoubt">Dubito!</button>
           </div>
         </div>
         <div id="palifico-choice" class="palifico-choice hidden">
-          <p class="pc-title">🎲 Sei rimasto con 1 dado!</p>
-          <p class="pc-sub">
+          <p class="pc-title" data-i18n="palChoiceTitle">🎲 Sei rimasto con 1 dado!</p>
+          <p class="pc-sub" data-i18n-html="palChoiceSub">
             Vuoi dichiarare <strong>Palifico</strong>? Apri tu, il valore resta bloccato e
             gli 1 non valgono come jolly. Si può fare <strong>una sola volta a partita</strong>.
           </p>
           <div class="action-buttons">
-            <button id="btn-palifico-yes" class="primary">Dichiara Palifico</button>
-            <button id="btn-palifico-no" class="ghost">Gioca normale</button>
+            <button id="btn-palifico-yes" class="primary" data-i18n="btnPalYes">Dichiara Palifico</button>
+            <button id="btn-palifico-no" class="ghost" data-i18n="btnPalNo">Gioca normale</button>
           </div>
         </div>
 
         <div id="waiting-turn" class="waiting hidden">
-          <span class="spinner"></span> <span id="waiting-text">In attesa…</span>
+          <span class="spinner"></span> <span id="waiting-text" data-i18n="waiting">In attesa…</span>
         </div>
 
         <div id="calza-wrap" class="calza-wrap hidden">
           <button id="btn-calza" class="calza-btn">✋ Calza!</button>
-          <span class="calza-hint">Pensi che l'ultima dichiarazione sia <em>esatta</em>?</span>
+          <span class="calza-hint" data-i18n-html="calzaHint">Pensi che l'ultima dichiarazione sia <em>esatta</em>?</span>
         </div>
       </section>
 
@@ -192,13 +196,13 @@
       </button>
       <div id="chat-panel" class="chat-panel hidden">
         <div class="chat-head">
-          <span>💬 Chat del tavolo</span>
+          <span data-i18n="chatTitle">💬 Chat del tavolo</span>
           <button id="chat-close" class="chat-close" aria-label="Chiudi">✕</button>
         </div>
         <div id="chat-messages" class="chat-messages"></div>
         <form id="chat-form" class="chat-form" autocomplete="off">
-          <input id="chat-input" type="text" maxlength="300" placeholder="Scrivi qualcosa… (bluffa!)" />
-          <button type="submit" class="chat-send">Invia</button>
+          <input id="chat-input" type="text" maxlength="300" placeholder="Scrivi qualcosa… (bluffa!)" data-i18n-ph="chatPh" />
+          <button type="submit" class="chat-send" data-i18n="chatSend">Invia</button>
         </form>
       </div>
       <div id="chat-pop" class="chat-pop hidden"></div>
@@ -207,7 +211,7 @@
       <button id="log-toggle" class="log-toggle hidden" aria-label="Storico dichiarazioni">📜</button>
       <div id="log-panel" class="log-panel hidden">
         <div class="chat-head">
-          <span>📜 Storico del round</span>
+          <span data-i18n="logTitle">📜 Storico del round</span>
           <button id="log-close" class="chat-close" aria-label="Chiudi">✕</button>
         </div>
         <div id="log-list" class="log-list"></div>
@@ -220,7 +224,7 @@
           <p id="overlay-sub" class="overlay-sub"></p>
           <div id="overlay-reveal" class="overlay-reveal"></div>
           <p id="overlay-countdown" class="muted"></p>
-          <button id="overlay-btn" class="primary hidden">Torna alla home</button>
+          <button id="overlay-btn" class="primary hidden" data-i18n="backHome">Torna alla home</button>
           <button id="overlay-btn2" class="danger-ghost hidden"></button>
         </div>
       </div>
@@ -229,7 +233,7 @@
       <div id="disconnect-overlay" class="overlay light-overlay hidden">
         <div class="overlay-card light-card">
           <div class="reconnect-spin"><span class="spinner big"></span></div>
-          <h2>In pausa un istante…</h2>
+          <h2 data-i18n="discTitle">In pausa un istante…</h2>
           <p id="disconnect-sub" class="overlay-sub"></p>
           <button id="disconnect-action" class="danger-ghost"></button>
         </div>
@@ -239,10 +243,10 @@
       <div id="pause-overlay" class="overlay hidden">
         <div class="overlay-card">
           <div class="pause-icon">⏸️</div>
-          <h2>Partita in pausa</h2>
+          <h2 data-i18n="pauseTitle">Partita in pausa</h2>
           <p id="pause-sub" class="overlay-sub"></p>
           <div class="pause-code-box">
-            <span class="muted">Codice del tavolo da comunicare a chi è uscito</span>
+            <span class="muted" data-i18n="pauseCodeLabel">Codice del tavolo da comunicare a chi è uscito</span>
             <div id="pause-code" class="room-code">----</div>
           </div>
           <p class="muted" id="pause-hint"></p>
@@ -254,14 +258,14 @@
       <div id="calza-warn" class="overlay hidden">
         <div class="overlay-card">
           <div class="pause-icon">⚠️</div>
-          <h2>Calza Official in due?</h2>
-          <p class="overlay-sub">
+          <h2 data-i18n="cwTitle">Calza Official in due?</h2>
+          <p class="overlay-sub" data-i18n-html="cwSub">
             In testa a testa con la versione <strong>Official</strong> la Calza non si può
             <strong>mai</strong> chiamare: chi non ha dichiarato è sempre "chi risponde".
             Di fatto giocherete come in <strong>modalità Jolly</strong>.
           </p>
-          <button id="calza-warn-start" class="primary">Inizia lo stesso</button>
-          <button id="calza-warn-back" class="ghost danger-ghost">Torna indietro</button>
+          <button id="calza-warn-start" class="primary" data-i18n="cwStart">Inizia lo stesso</button>
+          <button id="calza-warn-back" class="ghost danger-ghost" data-i18n="cwBack">Torna indietro</button>
         </div>
       </div>
 
@@ -280,7 +284,7 @@
           <div class="rstory-tap rstory-tap-right" id="rstory-next" aria-hidden="true"></div>
           <span class="rstory-arrow rstory-arrow-left" id="rstory-arrow-left" aria-hidden="true">‹</span>
           <span class="rstory-arrow rstory-arrow-right" id="rstory-arrow-right" aria-hidden="true">›</span>
-          <div class="rstory-hint" id="rstory-hint">Tocca per continuare</div>
+          <div class="rstory-hint" id="rstory-hint" data-i18n="rulesHint">Tocca per continuare</div>
         </div>
       </div>
 
@@ -288,6 +292,7 @@
     </div>
 
     <script src="/socket.io/socket.io.js"></script>
+    <script src="i18n.js"></script>
     <script src="client.js"></script>
   </body>
 </html>

@@ -1,10 +1,47 @@
-/* global io */
+/* global io, I18N, SERVER_MSG_EN, SERVER_MSG_EN_RX */
 'use strict';
 
 // ---------- util ----------
 const $ = (sel) => document.querySelector(sel);
 const SESSION_KEY = 'perudo.session';
+const LANG_KEY = 'perudo.lang';
 const REVEAL_SECONDS = 20;
+
+// ---------- lingua (per-dispositivo) ----------
+let LANG = localStorage.getItem(LANG_KEY) === 'en' ? 'en' : 'it';
+/** Traduzione con placeholder {k}. Fallback: italiano, poi la chiave stessa. */
+function t(key, vars) {
+  let s = (I18N[LANG] && I18N[LANG][key]) != null ? I18N[LANG][key] : I18N.it[key];
+  if (s == null) s = key;
+  if (vars) {
+    for (const k of Object.keys(vars)) s = s.split('{' + k + '}').join(vars[k]);
+  }
+  return s;
+}
+/** Messaggi del server (italiani) → lingua corrente; fallback: originale. */
+function tServer(msg) {
+  if (LANG === 'it' || !msg) return msg;
+  if (SERVER_MSG_EN.has(msg)) return SERVER_MSG_EN.get(msg);
+  for (const [rx, tpl] of SERVER_MSG_EN_RX) {
+    const m = msg.match(rx);
+    if (m) return tpl.split('{n}').join(m[1]);
+  }
+  return msg;
+}
+/** Applica le traduzioni ai testi statici marcati con data-i18n / data-i18n-html / data-i18n-ph. */
+function applyI18nStatic() {
+  document.documentElement.lang = LANG;
+  document.title = t('docTitle');
+  document.querySelectorAll('[data-i18n]').forEach((el) => {
+    el.textContent = t(el.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-html]').forEach((el) => {
+    el.innerHTML = t(el.dataset.i18nHtml);
+  });
+  document.querySelectorAll('[data-i18n-ph]').forEach((el) => {
+    el.placeholder = t(el.dataset.i18nPh);
+  });
+}
 
 // Posizioni dei pallini su una griglia 3x3 (indici 0..8, riga per riga).
 const PIPS = {
@@ -69,11 +106,11 @@ function showScreen(id) {
 
 let toastTimer = null;
 function toast(msg) {
-  const t = $('#toast');
-  t.textContent = msg;
-  t.classList.remove('hidden');
+  const el = $('#toast');
+  el.textContent = tServer(msg); // i messaggi del server arrivano in italiano
+  el.classList.remove('hidden');
   clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => t.classList.add('hidden'), 3000);
+  toastTimer = setTimeout(() => el.classList.add('hidden'), 3000);
 }
 
 function initials(name) {
@@ -128,188 +165,196 @@ function rsRRow(name, dice, face, i, wild) {
     .join('')}</span></div>`;
 }
 
-/** Slide per modalità: { step, t (titolo), d (testo), fig() (HTML figura), cta? }. */
-const RULES = {
-  standard: [
-    {
-      step: 'Obiettivo',
-      t: 'Ultimo dado in piedi',
-      d: 'Tutti partono con lo <strong>stesso numero di dadi</strong>. Round dopo round qualcuno ne perde: vince <em>chi resta per ultimo</em>.',
-      fig: () => `
+/** Slide per modalità, costruite nella lingua corrente:
+ *  { step, t (titolo), d (testo), fig() (HTML figura), foot()?, cta? }. */
+function getRules() {
+  const goldBtn =
+    'background:linear-gradient(90deg,var(--gold),#ffb703);color:#3a2b00;box-shadow:0 0 26px rgba(255,183,3,.4)';
+  return {
+    standard: [
+      {
+        step: t('rs1s'),
+        t: t('rs1t'),
+        d: t('rs1d'),
+        fig: () => `
         <div class="rs-fan">${[3, 6, 2, 5, 4]
           .map((v, i) => rsTilt(v, [-16, -8, 0, 8, 16][i], i))
           .join('')}</div>
-        <span class="rs-pill">🤫 Tieni i tuoi dadi <b>nascosti</b> agli avversari</span>`,
-    },
-    {
-      step: 'La dichiarazione',
-      t: 'Quanti ce ne sono?',
-      d: 'Al tuo turno dichiari quanti dadi di un valore ci sono <strong>in tutto il tavolo</strong>, contando anche quelli che non vedi. Stima… o bluff.',
-      fig: () => `
+        <span class="rs-pill">${t('rs1pill')}</span>`,
+      },
+      {
+        step: t('rs2s'),
+        t: t('rs2t'),
+        d: t('rs2d'),
+        fig: () => `
         <div class="rs-table">${rsSeat('Luca', 3)}${rsSeat('Anna', 3)}</div>
         <div class="rs-call">
-          <span class="rs-minelabel">La tua chiamata</span>
-          <span class="rs-bubble"><span class="rs-bsay">«Ci sono almeno</span> 3 × ${dieEl(3, 'die-md')}<span class="rs-bsay">»</span></span>
+          <span class="rs-minelabel">${t('r_call')}</span>
+          <span class="rs-bubble"><span class="rs-bsay">${t('r_say')}</span> 3 × ${dieEl(3, 'die-md')}<span class="rs-bsay">${t('r_sayEnd')}</span></span>
         </div>
         <div class="rs-mine">
           <div class="rs-fan">${[3, 5, 3].map((v, i) => rsTilt(v, 0, i, 'die-sm')).join('')}</div>
-          <span class="rs-minelabel">I tuoi dadi</span>
+          <span class="rs-minelabel">${t('r_mine')}</span>
         </div>`,
-    },
-    {
-      step: 'Il rilancio',
-      t: 'Sempre più in alto',
-      d: 'Devi <strong>superare</strong> l\'ultima dichiarazione: <em>aumenta la quantità</em> — e puoi rilanciare su qualsiasi valore — oppure tieni la quantità e <em>alza il valore</em>.',
-      fig: () => `
+      },
+      {
+        step: t('rs3s'),
+        t: t('rs3t'),
+        d: t('rs3d'),
+        fig: () => `
         <div class="rs-ladder">
           ${rsChip(4, 3, 'base', '', 0)}
-          ${rsChip(5, 2, 'ok', 'quantità ↑ · valore libero', 1)}
-          <span class="rs-or">oppure</span>
-          ${rsChip(4, 5, 'ok', 'stessa quantità · valore ↑', 2)}
+          ${rsChip(5, 2, 'ok', t('rs3n1'), 1)}
+          <span class="rs-or">${t('rs3or')}</span>
+          ${rsChip(4, 5, 'ok', t('rs3n2'), 2)}
         </div>`,
-    },
-    {
-      step: 'Il dubbio',
-      t: '«Dubito!»',
-      d: 'Ti sembra una sparata? Ferma il giro: <strong>tutti mostrano i dadi</strong> e si contano quelli del valore dichiarato.',
-      fig: () => `
-        <span class="rs-doubt">Dubito!</span>
+      },
+      {
+        step: t('rs4s'),
+        t: t('rs4t'),
+        d: t('rs4d'),
+        fig: () => `
+        <span class="rs-doubt">${t('rs4btn')}</span>
         <div class="rs-rrows">
-          ${rsRRow('Tu', [3, 5, 3], 3, 0)}
+          ${rsRRow(t('r_you'), [3, 5, 3], 3, 0)}
           ${rsRRow('Luca', [2, 3, 6], 3, 1)}
           ${rsRRow('Anna', [4, 1, 3], 3, 2)}
         </div>
-        <span class="rs-pill">Dichiarati <b>4 ×</b> ${dieEl(3, 'die-xs', 'inline')} · trovati <b>4</b> ✔</span>`,
-    },
-    {
-      step: 'Chi perde',
-      t: 'Il verdetto',
-      d: '',
-      fig: () => `
+        <span class="rs-pill">${t('rs4found', { d: dieEl(3, 'die-xs', 'inline') })}</span>`,
+      },
+      {
+        step: t('rs5s'),
+        t: t('rs5t'),
+        d: '',
+        fig: () => `
         <div class="rs-verdicts">
-          <div class="rs-verdict good" style="--i:0"><span class="rs-ico">✅</span><span><b>Era vera</b> → perde un dado <b>chi ha dubitato</b></span></div>
-          <div class="rs-verdict bad" style="--i:1"><span class="rs-ico">🔥</span><span><b>Era falsa</b> → perde un dado <b>chi l'ha detta</b></span></div>
+          <div class="rs-verdict good" style="--i:0"><span class="rs-ico">✅</span><span>${t('rs5v1')}</span></div>
+          <div class="rs-verdict bad" style="--i:1"><span class="rs-ico">🔥</span><span>${t('rs5v2')}</span></div>
         </div>
         <div class="rs-minis">
-          <span class="rs-pill">💀 A <b>0 dadi</b> sei eliminato</span>
-          <span class="rs-pill">🎲 Chi perde <b>apre</b> il round dopo</span>
+          <span class="rs-pill">${t('rs5p1')}</span>
+          <span class="rs-pill">${t('rs5p2')}</span>
         </div>`,
-      cta: 'Tutto chiaro, si gioca! 🎲',
-    },
-  ],
-  jolly: [
-    {
-      step: 'Modalità Jolly',
-      t: 'Gli 1 fanno i matti',
-      d: 'Valgono tutte le regole della Standard, con <strong>due novità</strong>: gli <em>1 diventano jolly</em> e arriva il <em>Palifico</em>.',
-      fig: () => `
+        cta: t('ctaPlay'),
+      },
+    ],
+    jolly: [
+      {
+        step: t('rj1s'),
+        t: t('rj1t'),
+        d: t('rj1d'),
+        fig: () => `
         <div class="rs-fan">${rsTilt(1, -10, 0, 'die-lg', '', true)}${rsTilt(3, 10, 1, 'die-lg')}</div>
         <div class="rs-minis">
-          <span class="rs-pill">${dieEl(1, 'die-xs', 'inline', true)} <b>jolly</b>: conta come tutto</span>
-          <span class="rs-pill">🎯 <b>Palifico</b>: il round dell'ultimo dado</span>
+          <span class="rs-pill">${t('rj1p1', { d: dieEl(1, 'die-xs', 'inline', true) })}</span>
+          <span class="rs-pill">${t('rj1p2')}</span>
         </div>`,
-    },
-    {
-      step: 'Il jolly',
-      t: 'Gli 1 contano sempre',
-      d: 'Alla conta, ogni <em>1</em> vale come il valore dichiarato. Le dichiarazioni salgono in fretta: tienine conto quando rilanci.',
-      fig: () => `
-        <span class="rs-pill">Dichiarati <b>4 ×</b> ${dieEl(3, 'die-xs', 'inline')}</span>
+      },
+      {
+        step: t('rj2s'),
+        t: t('rj2t'),
+        d: t('rj2d'),
+        fig: () => `
+        <span class="rs-pill">${t('rj2bid', { d: dieEl(3, 'die-xs', 'inline') })}</span>
         <div class="rs-rrows">
-          ${rsRRow('Tu', [3, 5, 1], 3, 0, true)}
+          ${rsRRow(t('r_you'), [3, 5, 1], 3, 0, true)}
           ${rsRRow('Luca', [2, 3, 6], 3, 1, true)}
           ${rsRRow('Anna', [4, 1, 3], 3, 2, true)}
         </div>
-        <span class="rs-pill">Trovati <b>5</b> ✔ — gli ${dieEl(1, 'die-xs', 'inline', true)} contano come ${dieEl(3, 'die-xs', 'inline')}</span>`,
-    },
-    {
-      step: 'Puntare sugli 1',
-      t: 'Metà… o il doppio',
-      d: 'Puoi puntare anche sugli 1: passa con <em>metà quantità</em> (arrotondata per eccesso). Tornare ai numeri costa <em>il doppio più uno</em>. E il round non si può aprire sugli 1.',
-      fig: () => `
+        <span class="rs-pill">${t('rj2found', {
+          d1: dieEl(1, 'die-xs', 'inline', true),
+          d3: dieEl(3, 'die-xs', 'inline'),
+        })}</span>`,
+      },
+      {
+        step: t('rj3s'),
+        t: t('rj3t'),
+        d: t('rj3d'),
+        fig: () => `
         <div class="rs-ladder">
           ${rsChip(4, 3, 'base', '', 0)}
-          ${rsChip(2, 1, 'ok', 'agli 1: metà ↓', 1, true)}
-          ${rsChip(5, 3, 'ok', 'dagli 1: doppio + 1', 2)}
+          ${rsChip(2, 1, 'ok', t('rj3n1'), 1, true)}
+          ${rsChip(5, 3, 'ok', t('rj3n2'), 2)}
         </div>`,
-    },
-    {
-      step: 'Palifico',
-      t: 'Palifico!',
-      d: 'Entri nel round con <strong>1 dado</strong>? Puoi dichiarare Palifico — <em>una volta a partita</em> — e apri tu un giro speciale.',
-      fig: () => `
-        <span class="rs-doubt" style="background:linear-gradient(90deg,var(--gold),#ffb703);color:#3a2b00;box-shadow:0 0 26px rgba(255,183,3,.4)">🎲 Palifico!</span>`,
-      foot: () => `<span class="rs-pill">🔒 valore <b>bloccato</b>: si alza solo la quantità</span>`,
-    },
-    {
-      step: 'Palifico · da sapere',
-      t: 'Due cose ancora',
-      d: '',
-      fig: () => `
+      },
+      {
+        step: t('rj4s'),
+        t: t('rj4t'),
+        d: t('rj4d'),
+        fig: () => `
+        <span class="rs-doubt" style="${goldBtn}">🎲 Palifico!</span>`,
+        foot: () => `<span class="rs-pill">${t('rj4foot')}</span>`,
+      },
+      {
+        step: t('rj5s'),
+        t: t('rj5t'),
+        d: '',
+        fig: () => `
         <div class="rs-verdicts">
-          <div class="rs-verdict bad" style="--i:0"><span class="rs-ico">${dieEl(1, 'die-xs')}</span><span>Durante il Palifico gli <b>1 non sono jolly</b>: tornano una faccia normale</span></div>
-          <div class="rs-verdict good" style="--i:1"><span class="rs-ico">🔁</span><span>Se qualcuno ha chiamato Palifico, chi è rimasto con <b>un solo dado</b> può cambiare la puntata</span></div>
+          <div class="rs-verdict bad" style="--i:0"><span class="rs-ico">${dieEl(1, 'die-xs')}</span><span>${t('rj5v1')}</span></div>
+          <div class="rs-verdict good" style="--i:1"><span class="rs-ico">🔁</span><span>${t('rj5v2')}</span></div>
         </div>`,
-      cta: 'Tutto chiaro, si gioca! 🎲',
-    },
-  ],
-  calza: [
-    {
-      step: 'Modalità Calza',
-      t: 'Una mossa in più',
-      d: 'Vale <strong>tutto della Jolly</strong> — 1 jolly e Palifico — più un\'arma nuova: la <em>Calza</em>, la scommessa che la dichiarazione sia <strong>esatta</strong>.',
-      fig: () => `
-        <span class="rs-doubt" style="background:linear-gradient(90deg,var(--gold),#ffb703);color:#3a2b00;box-shadow:0 0 26px rgba(255,183,3,.4)">✋ Calza!</span>`,
-    },
-    {
-      step: 'La mossa',
-      t: 'Ferma il giro, quando vuoi',
-      d: 'Pensi che l\'ultima dichiarazione sia <em>esatta</em>? Calza! Può farlo <strong>chiunque tranne il dichiarante</strong> — basta aver <em>perso almeno un dado</em> — anche se non è il tuo turno.',
-      fig: () => `
+        cta: t('ctaPlay'),
+      },
+    ],
+    calza: [
+      {
+        step: t('rc1s'),
+        t: t('rc1t'),
+        d: t('rc1d'),
+        fig: () => `
+        <span class="rs-doubt" style="${goldBtn}">✋ Calza!</span>`,
+      },
+      {
+        step: t('rc2s'),
+        t: t('rc2t'),
+        d: t('rc2d'),
+        fig: () => `
         <div class="rs-call">
-          <span class="rs-minelabel">Anna dichiara</span>
+          <span class="rs-minelabel">${t('rc2lbl1')}</span>
           <span class="rs-bubble">3 × ${dieEl(5, 'die-md')}</span>
         </div>
         <div class="rs-call">
-          <span class="rs-minelabel">Tu, fuori turno</span>
-          <span class="rs-doubt" style="background:linear-gradient(90deg,var(--gold),#ffb703);color:#3a2b00;box-shadow:0 0 22px rgba(255,183,3,.35);animation:none">✋ Calza!</span>
+          <span class="rs-minelabel">${t('rc2lbl2')}</span>
+          <span class="rs-doubt" style="${goldBtn};animation:none">✋ Calza!</span>
         </div>`,
-    },
-    {
-      step: 'Il verdetto',
-      t: 'Rischio e premio',
-      d: '',
-      fig: () => `
+      },
+      {
+        step: t('rc3s'),
+        t: t('rc3t'),
+        d: '',
+        fig: () => `
         <div class="rs-verdicts">
-          <div class="rs-verdict good" style="--i:0"><span class="rs-ico">🎁</span><span>Conta <b>esatta</b> → <b>recuperi un dado</b> (fino a quelli di partenza)</span></div>
-          <div class="rs-verdict bad" style="--i:1"><span class="rs-ico">🔥</span><span>Sbagliata, anche di poco → <b>perdi un dado</b></span></div>
+          <div class="rs-verdict good" style="--i:0"><span class="rs-ico">🎁</span><span>${t('rc3v1')}</span></div>
+          <div class="rs-verdict bad" style="--i:1"><span class="rs-ico">🔥</span><span>${t('rc3v2')}</span></div>
         </div>`,
-      foot: () => `<span class="rs-pill">🎲 Come vada, <b>apri tu</b> il round dopo</span>`,
-    },
-    {
-      step: 'Da sapere',
-      t: 'Ultime due cose',
-      d: '',
-      fig: () => `
+        foot: () => `<span class="rs-pill">${t('rc3foot')}</span>`,
+      },
+      {
+        step: t('rc4s'),
+        t: t('rc4t'),
+        d: '',
+        fig: () => `
         <div class="rs-verdicts">
-          <div class="rs-verdict good" style="--i:0"><span class="rs-ico">${dieEl(1, 'die-xs', '', true)}</span><span>I <b>jolly contano</b>: la conta è la stessa del Dubito</span></div>
-          <div class="rs-verdict bad" style="--i:1"><span class="rs-ico">🚫</span><span>Niente Calza durante il <b>Palifico</b></span></div>
+          <div class="rs-verdict good" style="--i:0"><span class="rs-ico">${dieEl(1, 'die-xs', '', true)}</span><span>${t('rc4v1')}</span></div>
+          <div class="rs-verdict bad" style="--i:1"><span class="rs-ico">🚫</span><span>${t('rc4v2')}</span></div>
         </div>`,
-    },
-    {
-      step: 'Le versioni',
-      t: 'Official o House?',
-      d: '',
-      fig: () => `
+      },
+      {
+        step: t('rc5s'),
+        t: t('rc5t'),
+        d: '',
+        fig: () => `
         <div class="rs-verdicts">
-          <div class="rs-verdict" style="--i:0"><span class="rs-ico">🏛️</span><span><b>Official</b>: non possono calzare il dichiarante e <b>chi gli risponde</b></span></div>
-          <div class="rs-verdict good" style="--i:1"><span class="rs-ico">🍻</span><span><b>House</b>: escluso solo il dichiarante — <b>anche chi risponde</b> può calzare</span></div>
+          <div class="rs-verdict" style="--i:0"><span class="rs-ico">🏛️</span><span>${t('rc5v1')}</span></div>
+          <div class="rs-verdict good" style="--i:1"><span class="rs-ico">🍻</span><span>${t('rc5v2')}</span></div>
         </div>`,
-      foot: () => `<span class="rs-pill">⚙️ La versione la sceglie <b>chi crea il tavolo</b></span>`,
-      cta: 'Tutto chiaro, si gioca! 🎲',
-    },
-  ],
-};
+        foot: () => `<span class="rs-pill">${t('rc5foot')}</span>`,
+        cta: t('ctaPlay'),
+      },
+    ],
+  };
+}
 
 const rstory = {
   el: $('#rules-story'),
@@ -348,11 +393,12 @@ function rulesShow(i, dir) {
 }
 
 function rulesOpen(mode) {
-  rstory.slides = RULES[mode] || RULES.standard;
+  const all = getRules();
+  rstory.slides = all[mode] || all.standard;
   rstory.i = 0;
   rstory.open = true;
   rstory.hinted = false;
-  rstory.modeEl.textContent = 'Regole · ' + (MODE_NAMES[mode] || mode);
+  rstory.modeEl.textContent = t('rulesChip', { m: MODE_NAMES[mode] || mode });
   rstory.dots.innerHTML = rstory.slides.map(() => '<i></i>').join('');
   document.querySelector('.rstory-deco-a').innerHTML = dieEl(5, 'die-lg');
   document.querySelector('.rstory-deco-b').innerHTML = dieEl(2, 'die-lg');
@@ -421,6 +467,25 @@ rstory.frame.addEventListener('touchend', (e) => {
   }
 });
 
+// ---------- selettore lingua (bandiere in alto) ----------
+function setLang(lang) {
+  LANG = lang === 'en' ? 'en' : 'it';
+  localStorage.setItem(LANG_KEY, LANG);
+  document.querySelectorAll('#lang-switch .lang-opt').forEach((b) =>
+    b.classList.toggle('selected', b.dataset.lang === LANG)
+  );
+  applyI18nStatic();
+  // Ri-renderizza le viste dinamiche già a schermo.
+  if (state.room) {
+    renderLobby(state.room);
+    if (state.room.status !== 'lobby') renderGame(state.room);
+  }
+}
+document.querySelectorAll('#lang-switch .lang-opt').forEach((btn) => {
+  btn.addEventListener('click', () => setLang(btn.dataset.lang));
+});
+setLang(LANG); // applica la lingua salvata all'avvio
+
 // ---------- HOME ----------
 // Selettore modalità (segmented). Aggiorna state.mode e apre le regole della modalità.
 document.querySelectorAll('#mode-picker .mode-opt').forEach((btn) => {
@@ -447,7 +512,7 @@ document.querySelectorAll('#calza-rule .cr-opt').forEach((btn) => {
 $('#btn-create').addEventListener('click', () => {
   const hostName = $('#host-name').value;
   const dicePerPlayer = $('#dice-count').value;
-  if (!hostName.trim()) return toast('Inserisci il tuo nome.');
+  if (!hostName.trim()) return toast(t('toastName'));
   socket.emit(
     'createRoom',
     { hostName, dicePerPlayer, mode: state.mode, calzaRule: state.calzaRule },
@@ -462,8 +527,8 @@ $('#btn-create').addEventListener('click', () => {
 $('#btn-join').addEventListener('click', () => {
   const roomCode = $('#join-code').value.trim().toUpperCase();
   const name = $('#join-name').value;
-  if (!roomCode) return toast('Inserisci il codice del tavolo.');
-  if (!name.trim()) return toast('Inserisci il tuo nome.');
+  if (!roomCode) return toast(t('toastCode'));
+  if (!name.trim()) return toast(t('toastName'));
   socket.emit('joinRoom', { roomCode, name }, (res) => {
     if (!res.ok) return toast(res.error);
     state.me = { code: res.code, playerId: res.playerId, isHost: false, token: res.token };
@@ -477,13 +542,13 @@ $('#btn-share').addEventListener('click', async () => {
   const link = shareLink(state.me.code);
   try {
     if (navigator.share) {
-      await navigator.share({ title: 'Perudo', text: 'Unisciti al mio tavolo!', url: link });
+      await navigator.share({ title: 'Perudo', text: t('shareText'), url: link });
     } else {
       await navigator.clipboard.writeText(link);
-      toast('Link copiato!');
+      toast(t('linkCopied'));
     }
   } catch (e) {
-    prompt('Copia il link e invialo agli amici:', link);
+    prompt(t('copyPrompt'), link);
   }
 });
 
@@ -527,7 +592,7 @@ function renderLobby(room) {
     if (state.me.isHost && !p.isHost) {
       const btn = document.createElement('button');
       btn.className = 'kick';
-      btn.textContent = 'Espelli';
+      btn.textContent = t('kick');
       btn.onclick = () =>
         socket.emit('kickPlayer', { playerId: p.id }, (r) => {
           if (!r.ok) toast(r.error);
@@ -542,17 +607,15 @@ function renderLobby(room) {
   const modeInfo =
     room.mode === 'calza'
       ? `Calza ${room.calzaRule === 'house' ? '🍻 House' : '🏛️ Official'}`
-      : `Modalità ${MODE_NAMES[room.mode] || room.mode}`;
-  const tableInfo = `${room.dicePerPlayer} dadi a testa · ${modeInfo}`;
+      : t('modePrefix', { m: MODE_NAMES[room.mode] || room.mode });
+  const tableInfo = `${t('diceEach', { n: room.dicePerPlayer })} · ${modeInfo}`;
   if (state.me.isHost) {
     hostCtrl.classList.remove('hidden');
     guestNote.classList.add('hidden');
     $('#lobby-dice-info').textContent = tableInfo;
     const enough = room.players.length >= room.minPlayers;
     $('#btn-start').disabled = !enough;
-    $('#start-hint').textContent = enough
-      ? ''
-      : `Servono almeno ${room.minPlayers} giocatori per iniziare.`;
+    $('#start-hint').textContent = enough ? '' : t('needPlayers', { n: room.minPlayers });
   } else {
     hostCtrl.classList.add('hidden');
     guestNote.classList.remove('hidden');
@@ -632,7 +695,10 @@ function renderGame(room) {
   const banner = $('#rolls-banner');
   if (g.phase === 'bidding' && !rolling.allRolled && !room.paused) {
     banner.classList.remove('hidden');
-    $('#rolls-text').textContent = `Lanci ${rolling.rolledIds.length}/${rolling.need.length} — in attesa che tutti lancino i dadi`;
+    $('#rolls-text').textContent = t('rollsBanner', {
+      a: rolling.rolledIds.length,
+      b: rolling.need.length,
+    });
   } else {
     banner.classList.add('hidden');
   }
@@ -642,7 +708,7 @@ function renderGame(room) {
   if (g.palifico && g.phase === 'bidding') {
     const palName = (room.players.find((p) => p.id === g.palificoPlayerId) || {}).name || '';
     palBanner.classList.remove('hidden');
-    $('#palifico-text').innerHTML = `⚠️ <strong>Palifico</strong> — apre ${escapeHtml(palName)} · valore bloccato · niente jolly`;
+    $('#palifico-text').innerHTML = t('palBanner', { name: escapeHtml(palName) });
   } else {
     palBanner.classList.add('hidden');
   }
@@ -655,9 +721,7 @@ function renderGame(room) {
   } else {
     const starter = (room.players.find((p) => p.id === g.starterPlayerId) || {}).name;
     bidEl.className = 'bid-display no-bid';
-    bidEl.innerHTML = starter
-      ? `nessuna, apre <strong>${escapeHtml(starter)}</strong> il round`
-      : 'nessuna';
+    bidEl.innerHTML = starter ? t('noBidOpens', { name: escapeHtml(starter) }) : t('noBid');
   }
 
   renderMyDice(room);
@@ -689,9 +753,9 @@ function renderGame(room) {
     const meC = room.players.find((p) => p.id === state.me.playerId);
     if (g.palifico) {
       $('#controls-title').textContent =
-        meC && meC.diceCount === 1 ? 'Palifico: puoi cambiare valore' : 'Palifico: valore bloccato';
+        meC && meC.diceCount === 1 ? t('ctrlPalChange') : t('ctrlPalLocked');
     } else {
-      $('#controls-title').textContent = 'Tocca a te!';
+      $('#controls-title').textContent = t('ctrlYourTurn');
     }
     // Preselezione automatica del prossimo rilancio possibile (una volta per
     // ogni nuova dichiarazione), lasciando poi libertà di modifica.
@@ -709,15 +773,15 @@ function renderGame(room) {
     if (g.phase === 'bidding') {
       waiting.classList.remove('hidden');
       if (myTurn && !iRolled) {
-        $('#waiting-text').textContent = 'Lancia i tuoi dadi per giocare 👆';
+        $('#waiting-text').textContent = t('waitRollYours');
       } else if (!rolling.allRolled) {
-        $('#waiting-text').textContent = 'In attesa che tutti lancino i dadi…';
+        $('#waiting-text').textContent = t('waitAllRoll');
       } else if (g.palificoPending) {
         const pn = (room.players.find((p) => p.id === g.palificoPendingId) || {}).name || '';
-        $('#waiting-text').textContent = `${pn} sta decidendo se dichiarare Palifico…`;
+        $('#waiting-text').textContent = t('waitPal', { name: pn });
       } else {
         const turnName = (room.players.find((p) => p.id === g.turnPlayerId) || {}).name || '';
-        $('#waiting-text').textContent = `Tocca a ${turnName}…`;
+        $('#waiting-text').textContent = t('waitTurn', { name: turnName });
       }
     } else {
       waiting.classList.add('hidden');
@@ -752,12 +816,12 @@ function renderMyDice(room) {
   if (me && !me.alive) {
     label.textContent = '';
     wrap.classList.remove('tap');
-    wrap.innerHTML = '<span class="muted">Sei stato eliminato 😵</span>';
+    wrap.innerHTML = `<span class="muted">${t('eliminated')}</span>`;
     return;
   }
 
   if (g.phase !== 'bidding') {
-    label.textContent = 'I tuoi dadi';
+    label.textContent = t('myDice');
     wrap.classList.remove('tap');
     wrap.innerHTML = state.myDice.map((v) => dieEl(v, 'die-lg', '', g.wild)).join('');
     return;
@@ -766,14 +830,13 @@ function renderMyDice(room) {
   if (state.animating) return;
 
   if (state.rolledRound === g.roundNumber) {
-    label.textContent = 'I tuoi dadi';
+    label.textContent = t('myDice');
     wrap.classList.remove('tap');
     wrap.innerHTML = state.myDice.map((v) => dieEl(v, 'die-lg', '', g.wild)).join('');
   } else {
     label.textContent = '';
     wrap.classList.add('tap');
-    wrap.innerHTML =
-      '<div class="tap-roll"><div class="cup">🎲</div><span>Tocca per lanciare i dadi</span></div>';
+    wrap.innerHTML = `<div class="tap-roll"><div class="cup">🎲</div><span>${t('tapRoll')}</span></div>`;
   }
 }
 
@@ -809,7 +872,7 @@ function throwDice(values, wrap) {
         setDieFace(d, values[i]);
       });
       state.animating = false;
-      $('#my-dice-label').textContent = 'I tuoi dadi';
+      $('#my-dice-label').textContent = t('myDice');
       if (state.room) renderGame(state.room);
     }
   }, 70);
@@ -945,7 +1008,7 @@ $('#btn-calza').addEventListener('click', () => {
 });
 
 function doEndGame() {
-  if (!window.confirm('Chiudere il tavolo per tutti? La partita finisce e tutti tornano alla schermata iniziale.')) return;
+  if (!window.confirm(t('confirmEnd'))) return;
   socket.emit('endGame', {}, (res) => {
     if (!res.ok) toast(res.error);
   });
@@ -960,9 +1023,7 @@ function doLeaveTable(confirmMsg) {
 
 $('#btn-end-game').addEventListener('click', doEndGame);
 $('#btn-close-lobby').addEventListener('click', doEndGame);
-$('#btn-leave').addEventListener('click', () =>
-  doLeaveTable('Vuoi abbandonare il tavolo? La partita andrà in pausa finché non rientri (con lo stesso nome).')
-);
+$('#btn-leave').addEventListener('click', () => doLeaveTable(t('confirmLeave')));
 $('#btn-leave-lobby').addEventListener('click', () => doLeaveTable(null));
 
 // ---------- OVERLAY (rivelazione / fine) ----------
@@ -980,31 +1041,36 @@ function showReveal(room) {
 
   const isCalza = r.type === 'calza';
   $('#overlay-title').textContent = gameOver
-    ? '🏆 Partita finita!'
+    ? t('ovWin')
     : isCalza
     ? r.exact
-      ? '✋ CALZA esatta!'
-      : '✋ Calza sbagliata'
+      ? t('ovCalzaExact')
+      : t('ovCalzaWrong')
     : r.bidWasTrue
-    ? 'Dichiarazione VERA'
-    : 'Dichiarazione FALSA';
+    ? t('ovTrue')
+    : t('ovFalse');
 
   const bidStr = `${r.bid.quantity} × ${faceName(r.bid.face, r.wild)}`;
+  const elim = r.loserEliminated ? t('ovElim') : '';
   let sub;
   if (isCalza) {
     sub =
-      `${escapeHtml(r.callerName)} ha calzato ${bidStr}. In tavola: ${r.actualCount}. ` +
+      t('ovCalzaSub', { caller: escapeHtml(r.callerName), bid: bidStr, count: r.actualCount }) +
       (r.exact
-        ? `<strong>${escapeHtml(r.callerName)}</strong> recupera un dado! 🎉`
-        : `${escapeHtml(r.callerName)} perde un dado${r.loserEliminated ? ' ed è eliminato/a' : ''}.`);
+        ? t('ovCalzaGain', { caller: escapeHtml(r.callerName) })
+        : t('ovCalzaLose', { caller: escapeHtml(r.callerName), elim }));
   } else {
-    sub =
-      `${escapeHtml(r.bidderName)} aveva dichiarato ${bidStr}. In tavola: ` +
-      `${r.actualCount} dadi da ${faceName(r.bid.face, r.wild)}. ` +
-      `${escapeHtml(r.loserName)} perde un dado${r.loserEliminated ? ' ed è eliminato/a' : ''}.`;
+    sub = t('ovBidSub', {
+      bidder: escapeHtml(r.bidderName),
+      bid: bidStr,
+      count: r.actualCount,
+      face: faceName(r.bid.face, r.wild),
+      loser: escapeHtml(r.loserName),
+      elim,
+    });
   }
   $('#overlay-sub').innerHTML = gameOver
-    ? `Vince <strong>${escapeHtml(r.winnerName)}</strong>! 🎉`
+    ? t('ovWinner', { name: escapeHtml(r.winnerName) })
     : sub;
 
   const rev = $('#overlay-reveal');
@@ -1036,20 +1102,20 @@ function showReveal(room) {
     if (isHost) {
       // Host: sceglie tra rivincita e chiusura tavolo.
       btn.className = 'primary';
-      btn.textContent = '🔁 Rivincita';
+      btn.textContent = t('rematch');
       btn.onclick = () => socket.emit('rematch', {}, (res) => { if (!res.ok) toast(res.error); });
       btn2.classList.remove('hidden');
       btn2.className = 'danger-ghost';
-      btn2.textContent = '🚪 Chiudi tavolo';
+      btn2.textContent = t('closeTableBtn');
       btn2.onclick = doEndGame;
       cd.textContent = '';
     } else {
       // Guest: può abbandonare, altrimenti aspetta la scelta dell'host.
       btn.className = 'danger-ghost';
-      btn.textContent = '🚪 Abbandona';
+      btn.textContent = t('abandonBtn');
       btn.onclick = () => doLeaveTable(null);
       btn2.classList.add('hidden');
-      cd.textContent = "In attesa che l'host scelga se fare la rivincita…";
+      cd.textContent = t('waitHost');
     }
   } else {
     btn2.classList.add('hidden');
@@ -1063,12 +1129,12 @@ function showReveal(room) {
       const iAmReady = ready.readyIds.includes(state.me.playerId);
       btn.classList.remove('hidden');
       btn.className = 'primary';
-      btn.textContent = iAmReady ? '✓ Pronto' : 'Procedi ▶';
+      btn.textContent = iAmReady ? t('readyBtn') : t('proceedBtn');
       btn.disabled = iAmReady;
       btn.onclick = () => {
         socket.emit('readyNext', {}, () => {});
         btn.disabled = true;
-        btn.textContent = '✓ Pronto';
+        btn.textContent = t('readyBtn');
       };
     }
 
@@ -1091,8 +1157,8 @@ function showReveal(room) {
 
 function updateCountdownText(left, ready) {
   const cd = $('#overlay-countdown');
-  const readyStr = ready ? `${ready.readyIds.length}/${ready.total} pronti · ` : '';
-  cd.textContent = left > 0 ? `${readyStr}nuovo round tra ${left}s…` : `${readyStr}si riparte!`;
+  const readyStr = ready ? t('readyCount', { a: ready.readyIds.length, b: ready.total }) : '';
+  cd.textContent = left > 0 ? readyStr + t('newRoundIn', { s: left }) : readyStr + t('goAgain');
   cd.dataset.left = left;
 }
 function refreshCountdownReady(ready) {
@@ -1116,25 +1182,16 @@ function hideOverlay() {
 // Pulsante d'azione condiviso dagli overlay: host = chiudi tavolo, guest = abbandona.
 function configureAbandonBtn(btn) {
   const isHost = !!(state.me && state.me.isHost);
-  btn.textContent = isHost ? '⏹ Termina e chiudi il tavolo' : '🚪 Abbandona il tavolo';
-  btn.onclick = isHost
-    ? doEndGame
-    : () =>
-        doLeaveTable(
-          'Vuoi abbandonare il tavolo? La partita resterà in pausa finché non rientri (con lo stesso nome).'
-        );
+  btn.textContent = isHost ? t('endCloseBtn') : t('leaveTableBtn');
+  btn.onclick = isHost ? doEndGame : () => doLeaveTable(t('confirmLeave'));
 }
 
 // Overlay PESANTE: qualcuno ha lasciato il tavolo col pulsante (serve il codice).
 function showPause(room) {
   const names = (room.leftPlayers || []).map(escapeHtml).join(', ');
-  $('#pause-sub').innerHTML = names
-    ? `<strong>${names}</strong> ha lasciato il tavolo.`
-    : 'Un giocatore ha lasciato il tavolo.';
+  $('#pause-sub').innerHTML = names ? t('pauseLeftNames', { names }) : t('pauseLeftGeneric');
   $('#pause-code').textContent = room.code;
-  $('#pause-hint').innerHTML = names
-    ? `Comunica questo codice a <strong>${names}</strong>: per rientrare basta riaprire il gioco ed entrare con lo stesso nome.`
-    : 'Comunica questo codice a chi è uscito: per rientrare basta riaprire il gioco ed entrare con lo stesso nome.';
+  $('#pause-hint').innerHTML = names ? t('pauseHintNames', { names }) : t('pauseHintGeneric');
   configureAbandonBtn($('#pause-action'));
   $('#pause-overlay').classList.remove('hidden');
 }
@@ -1145,9 +1202,7 @@ function hidePause() {
 // Overlay LEGGERO: disconnessione temporanea (rientro automatico atteso).
 function showDisconnect(room) {
   const names = (room.disconnectedPlayers || []).map(escapeHtml).join(', ');
-  $('#disconnect-sub').innerHTML = names
-    ? `In attesa che <strong>${names}</strong> si riconnetta… riprende da solo appena torna.`
-    : 'In attesa di riconnessione…';
+  $('#disconnect-sub').innerHTML = names ? t('discNames', { names }) : t('discGeneric');
   configureAbandonBtn($('#disconnect-action'));
   $('#disconnect-overlay').classList.remove('hidden');
 }
@@ -1223,7 +1278,7 @@ function renderLog(room) {
   const log = (g && g.bidLog) || [];
   const list = $('#log-list');
   if (!log.length) {
-    list.innerHTML = '<p class="log-empty">Ancora nessuna dichiarazione in questo round.</p>';
+    list.innerHTML = `<p class="log-empty">${t('logEmpty')}</p>`;
     return;
   }
   list.innerHTML = log
@@ -1330,13 +1385,13 @@ socket.on('chatMessage', (m) => addChatMsg(m));
 
 socket.on('kicked', () => {
   clearSession();
-  toast('Sei stato rimosso dal tavolo.');
+  toast(t('kickedT'));
   setTimeout(() => (location.href = location.pathname), 1200);
 });
 
 socket.on('tableClosed', () => {
   clearSession();
-  toast("L'host ha chiuso il tavolo.");
+  toast(t('closedT'));
   setTimeout(() => (location.href = location.pathname), 1200);
 });
 
