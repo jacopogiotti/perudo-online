@@ -526,9 +526,11 @@ function renderLobby(room) {
   if (state.me.isHost) {
     hostCtrl.classList.remove('hidden');
     guestNote.classList.add('hidden');
-    const ruleInfo =
-      room.mode === 'calza' ? ` · Calza ${room.calzaRule === 'house' ? '🍻 House' : '🏛️ Official'}` : '';
-    $('#lobby-dice-info').textContent = `${room.dicePerPlayer} dadi a testa${ruleInfo}`;
+    const modeInfo =
+      room.mode === 'calza'
+        ? `Calza ${room.calzaRule === 'house' ? '🍻 House' : '🏛️ Official'}`
+        : `Modalità ${MODE_NAMES[room.mode] || room.mode}`;
+    $('#lobby-dice-info').textContent = `${room.dicePerPlayer} dadi a testa · ${modeInfo}`;
     const enough = room.players.length >= room.minPlayers;
     $('#btn-start').disabled = !enough;
     $('#start-hint').textContent = enough
