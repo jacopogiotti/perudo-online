@@ -372,20 +372,34 @@ test('calza: sbagliata -> chi calza perde un dado', () => {
   assert.strictEqual(g.players[3].alive, false);
 });
 
-test('calza: eleggibilità (turno e successivo non possono; servono dadi persi)', () => {
-  const g = calzaSetup(1); // D ha 1 dado
+test('calza: chiunque tranne il dichiarante (anche di turno, anche a dadi pieni)', () => {
+  // Chi è di turno (B) può calzare, anche se ha tutti i dadi.
+  let g = calzaSetup(2);
   assert.strictEqual(g.placeBid('a', 4, 5).ok, true); // turno: B; successivo: C
-  assert.strictEqual(g.calza('a').ok, false); // A ha 2 dadi (pieni)
-  assert.strictEqual(g.calza('b').ok, false); // B è di turno
-  assert.strictEqual(g.calza('c').ok, false); // C è il successivo
-  assert.strictEqual(g.calza('d').ok, true); // D eleggibile
+  assert.strictEqual(g.calza('a').ok, false); // dichiarante escluso
+  assert.strictEqual(g.calza('b').ok, true);
+  // Anche il giocatore successivo (C) può.
+  g = calzaSetup(2);
+  assert.strictEqual(g.placeBid('a', 4, 5).ok, true);
+  assert.strictEqual(g.calza('c').ok, true);
 });
 
-test('calza: niente calza a 2 giocatori', () => {
+test('calza: il dichiarante non può calzare la propria dichiarazione', () => {
+  const g = calzaSetup(1); // D ha 1 dado (eleggibile per il resto)
+  g.players[0].dice = [5]; g.players[0].diceCount = 1; // anche A ha perso dadi
+  assert.strictEqual(g.placeBid('a', 3, 5).ok, true); // A dichiara; turno->B, successivo=C
+  const r = g.calza('a'); // A prova a calzare la SUA dichiarazione
+  assert.strictEqual(r.ok, false);
+  assert.match(r.reason, /tua stessa dichiarazione/);
+  assert.strictEqual(g.calza('d').ok, true); // D invece può
+});
+
+test('calza: possibile anche in testa a testa (2 giocatori)', () => {
   const g2 = new Game([{ id: 'a', name: 'A' }, { id: 'b', name: 'B' }], 3, {
     starterIndex: 0,
     mode: 'calza',
   });
   g2.placeBid('a', 1, 3);
-  assert.strictEqual(g2.calza('b').ok, false); // 2 giocatori
+  assert.strictEqual(g2.calza('a').ok, false); // il dichiarante mai
+  assert.strictEqual(g2.calza('b').ok, true); // l'avversario sì (è di turno)
 });

@@ -254,13 +254,47 @@ const RULES = {
   ],
   calza: [
     {
-      step: 'In sviluppo',
-      t: 'Modalità Calza',
-      d: 'Questa modalità è <strong>in fase di sviluppo</strong> e per ora non si può giocare. Avrà tutto della Jolly, più la mossa <em>«Calza»</em>: fermare il giro — anche fuori turno — se pensi che l\'ultima dichiarazione sia <strong>esatta</strong>.',
+      step: 'Modalità Calza',
+      t: 'Una mossa in più',
+      d: 'Vale <strong>tutto della Jolly</strong> — 1 jolly e Palifico — più un\'arma nuova: la <em>Calza</em>, la scommessa che la dichiarazione sia <strong>esatta</strong>.',
       fig: () => `
         <span class="rs-doubt" style="background:linear-gradient(90deg,var(--gold),#ffb703);color:#3a2b00;box-shadow:0 0 26px rgba(255,183,3,.4)">✋ Calza!</span>`,
-      foot: () => `<span class="rs-pill">🚧 presto giocabile</span>`,
-      cta: 'Ok, aspetto!',
+    },
+    {
+      step: 'La mossa',
+      t: 'Ferma il giro, quando vuoi',
+      d: 'Pensi che l\'ultima dichiarazione sia <em>esatta</em>? Calza! Può farlo <strong>chiunque tranne il dichiarante</strong>, in qualsiasi momento — anche se non è il tuo turno.',
+      fig: () => `
+        <div class="rs-call">
+          <span class="rs-minelabel">Anna dichiara</span>
+          <span class="rs-bubble">3 × ${dieEl(5, 'die-md')}</span>
+        </div>
+        <div class="rs-call">
+          <span class="rs-minelabel">Tu, fuori turno</span>
+          <span class="rs-doubt" style="background:linear-gradient(90deg,var(--gold),#ffb703);color:#3a2b00;box-shadow:0 0 22px rgba(255,183,3,.35);animation:none">✋ Calza!</span>
+        </div>`,
+    },
+    {
+      step: 'Il verdetto',
+      t: 'Rischio e premio',
+      d: '',
+      fig: () => `
+        <div class="rs-verdicts">
+          <div class="rs-verdict good" style="--i:0"><span class="rs-ico">🎁</span><span>Conta <b>esatta</b> → <b>recuperi un dado</b> (fino a quelli di partenza)</span></div>
+          <div class="rs-verdict bad" style="--i:1"><span class="rs-ico">🔥</span><span>Sbagliata, anche di poco → <b>perdi un dado</b></span></div>
+        </div>`,
+      foot: () => `<span class="rs-pill">🎲 Come vada, <b>apri tu</b> il round dopo</span>`,
+    },
+    {
+      step: 'Da sapere',
+      t: 'Ultime due cose',
+      d: '',
+      fig: () => `
+        <div class="rs-verdicts">
+          <div class="rs-verdict good" style="--i:0"><span class="rs-ico">${dieEl(1, 'die-xs', '', true)}</span><span>I <b>jolly contano</b>: la conta è la stessa del Dubito</span></div>
+          <div class="rs-verdict bad" style="--i:1"><span class="rs-ico">🚫</span><span>Niente Calza durante il <b>Palifico</b></span></div>
+        </div>`,
+      cta: 'Tutto chiaro, si gioca! 🎲',
     },
   ],
 };
@@ -377,15 +411,9 @@ rstory.frame.addEventListener('touchend', (e) => {
 
 // ---------- HOME ----------
 // Selettore modalità (segmented). Aggiorna state.mode e apre le regole della modalità.
-// Calza è in sviluppo: mostra solo l'anteprima, senza selezionarla.
 document.querySelectorAll('#mode-picker .mode-opt').forEach((btn) => {
   btn.addEventListener('click', () => {
-    const mode = btn.dataset.mode;
-    if (mode === 'calza') {
-      rulesOpen('calza');
-      return;
-    }
-    state.mode = mode;
+    state.mode = btn.dataset.mode;
     document.querySelectorAll('#mode-picker .mode-opt').forEach((b) =>
       b.classList.toggle('selected', b === btn)
     );
@@ -652,18 +680,16 @@ function renderGame(room) {
   $('#calza-wrap').classList.toggle('hidden', !calzaEligible(room));
 }
 
-/** Posso chiamare Calza adesso? (specchio della logica server) */
+/** Posso chiamare Calza adesso? (specchio della logica server)
+ *  Regola ufficiale: chiunque tranne il dichiarante, anche di turno. */
 function calzaEligible(room) {
   const g = room.game;
   if (!g || room.mode !== 'calza') return false;
   if (g.phase !== 'bidding' || !g.currentBid || g.palifico || room.paused) return false;
   if (g.rolling && !g.rolling.allRolled) return false;
-  if (room.players.filter((p) => p.alive).length <= 2) return false;
   const me = room.players.find((p) => p.id === state.me.playerId);
   if (!me || !me.alive) return false;
-  if (me.diceCount >= room.dicePerPlayer) return false; // devi aver perso un dado
-  if (state.me.playerId === g.turnPlayerId) return false; // non chi è di turno
-  if (state.me.playerId === g.nextPlayerId) return false; // non il successivo
+  if (state.me.playerId === g.currentBid.playerId) return false; // non il dichiarante
   return true;
 }
 
