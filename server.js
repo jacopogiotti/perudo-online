@@ -160,15 +160,26 @@ function maybeResume(room) {
   }
 }
 
-/** Invia a tutti lo stato pubblico e a ciascuno i propri dadi privati. */
+/** Invia a tutti lo stato pubblico e a ciascuno i propri dadi privati.
+ *  Gli eliminati ricevono anche i dadi di tutti i vivi (modalità spettatore). */
 function broadcastRoom(room) {
   const payload = roomStatePayload(room);
   io.to(room.code).emit('state', payload);
 
   if (room.game && (room.game.phase === 'bidding')) {
+    const allDice = room.game.players
+      .filter((gp) => gp.alive)
+      .map((gp) => ({ id: gp.id, dice: gp.dice }));
     for (const p of room.players) {
       if (p.connected && p.socketId) {
         io.to(p.socketId).emit('yourDice', { dice: room.game.diceFor(p.id) });
+        const gp = room.game.players.find((x) => x.id === p.id);
+        if (gp && !gp.alive) {
+          io.to(p.socketId).emit('spectatorDice', {
+            round: room.game.roundNumber,
+            players: allDice,
+          });
+        }
       }
     }
   }

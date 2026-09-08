@@ -68,6 +68,7 @@ const I18N = {
     waitPal: '{name} sta decidendo se dichiarare Palifico…',
     waitTurn: 'Tocca a {name}…',
     eliminated: 'Sei stato eliminato 😵',
+    specNote: '👀 Da spettatore vedi i dadi di tutti',
     tapRoll: 'Tocca per lanciare i dadi',
     palChoiceTitle: '🎲 Sei rimasto con 1 dado!',
     palChoiceSub:
@@ -251,6 +252,7 @@ const I18N = {
     waitPal: '{name} is deciding whether to declare Palifico…',
     waitTurn: "{name}'s turn…",
     eliminated: 'You have been eliminated 😵',
+    specNote: "👀 As a spectator you see everyone's dice",
     tapRoll: 'Tap to roll your dice',
     palChoiceTitle: '🎲 You are down to 1 die!',
     palChoiceSub:

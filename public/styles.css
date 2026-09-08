@@ -489,6 +489,13 @@ button:disabled {
   cursor: pointer;
   user-select: none;
 }
+/* messaggio per l'eliminato (modalità spettatore) */
+.spec-msg {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 14px;
+}
 
 /* ---------- dado realistico (pallini) ---------- */
 .die {
@@ -1060,7 +1067,7 @@ button:disabled {
   border-left: 4px solid var(--accent);
   border-radius: 12px;
   padding: 10px 14px;
-  z-index: 44;
+  z-index: 58; /* sopra i pannelli chat/storico (55): il fumetto non deve finirci sotto */
   box-shadow: var(--shadow);
   animation: fade 0.2s ease;
   max-width: 460px;

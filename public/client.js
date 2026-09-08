@@ -96,6 +96,7 @@ const state = {
   unread: 0,
   mode: 'standard', // modalità scelta in creazione: standard | jolly | calza
   calzaRule: 'official', // versione della Calza scelta in creazione: official | house
+  spectatorDice: null, // { round, players: [{id, dice}] } — solo se sono eliminato
 };
 
 // ---------- schermate ----------
@@ -661,9 +662,22 @@ function renderGame(room) {
     if (p.id === state.me.playerId) card.classList.add('me');
     if (!p.alive) card.classList.add('out');
 
-    const dots = Array.from({ length: room.dicePerPlayer }, (_, i) =>
+    let diceRow = Array.from({ length: room.dicePerPlayer }, (_, i) =>
       `<span class="dot ${i < p.diceCount ? '' : 'spent'}"></span>`
     ).join('');
+    // Spettatore: se sono eliminato vedo i dadi veri dei giocatori vivi.
+    if (
+      !meAlive &&
+      p.alive &&
+      g.phase === 'bidding' &&
+      state.spectatorDice &&
+      state.spectatorDice.round === g.roundNumber
+    ) {
+      const sd = state.spectatorDice.players.find((x) => x.id === p.id);
+      if (sd && sd.dice && sd.dice.length) {
+        diceRow = sd.dice.map((v) => dieEl(v, 'die-xs', '', g.wild)).join('');
+      }
+    }
 
     // Stato lancio (solo in bidding, finche' non hanno lanciato tutti)
     let flag = '';
@@ -685,7 +699,7 @@ function renderGame(room) {
         <span class="avatar">${initials(p.name)}</span>
         <span class="name">${escapeHtml(p.name)}</span>
       </div>
-      <div class="dice-count">${dots}</div>
+      <div class="dice-count">${diceRow}</div>
       ${flag}${starter}
     `;
     wrap.appendChild(card);
@@ -816,7 +830,7 @@ function renderMyDice(room) {
   if (me && !me.alive) {
     label.textContent = '';
     wrap.classList.remove('tap');
-    wrap.innerHTML = `<span class="muted">${t('eliminated')}</span>`;
+    wrap.innerHTML = `<div class="spec-msg"><span class="muted">${t('eliminated')}</span><span class="muted">${t('specNote')}</span></div>`;
     return;
   }
 
@@ -1374,6 +1388,12 @@ socket.on('state', (room) => {
 
 socket.on('yourDice', ({ dice }) => {
   state.myDice = dice || [];
+  if (state.room && state.room.status === 'playing') renderGame(state.room);
+});
+
+// Dadi di tutti i vivi: arrivano solo se sono eliminato (modalità spettatore).
+socket.on('spectatorDice', ({ round, players }) => {
+  state.spectatorDice = { round, players: players || [] };
   if (state.room && state.room.status === 'playing') renderGame(state.room);
 });
 
