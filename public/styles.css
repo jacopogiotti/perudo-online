@@ -1193,6 +1193,53 @@ button:disabled {
   line-height: 1.35;
 }
 
+/* --- avversari: amici online o bot --- */
+.opp-picker {
+  grid-template-columns: 1fr 1fr;
+}
+.bot-count {
+  margin-top: 8px;
+  padding: 10px 14px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--bg-2);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  animation: fade 0.25s ease;
+}
+.bot-count.hidden {
+  display: none;
+}
+.bc-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.bot-stepper {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.bot-stepper button {
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-size: 20px;
+  font-weight: 700;
+  padding: 0;
+}
+.bc-val {
+  font-size: 20px;
+  font-weight: 800;
+  min-width: 22px;
+  text-align: center;
+}
+
 .mode-ico {
   font-size: 13px;
   line-height: 1;

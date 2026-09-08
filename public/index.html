@@ -66,6 +66,25 @@
             </div>
           </div>
           <p class="mode-hint" data-i18n="modeHint">👆 Tocca una modalità per scoprirne le regole</p>
+          <label data-i18n="oppLabel">Avversari</label>
+          <div id="opp-picker" class="mode-picker opp-picker">
+            <button type="button" class="mode-opt selected" data-opp="friends">
+              <span class="mode-name">👥 <span data-i18n="oppFriends">Con amici</span></span>
+              <span class="mode-desc" data-i18n="oppFriendsD">Online, col codice d'invito.</span>
+            </button>
+            <button type="button" class="mode-opt" data-opp="bots">
+              <span class="mode-name">🤖 <span data-i18n="oppBots">Contro il computer</span></span>
+              <span class="mode-desc" data-i18n="oppBotsD">Da solo contro i bot.</span>
+            </button>
+          </div>
+          <div id="bot-count" class="bot-count hidden">
+            <span class="bc-label" data-i18n="botsLabel">🤖 Bot al tavolo</span>
+            <div class="bot-stepper">
+              <button type="button" id="bots-minus" aria-label="meno">−</button>
+              <span id="bots-val" class="bc-val">3</span>
+              <button type="button" id="bots-plus" aria-label="più">+</button>
+            </div>
+          </div>
           <button id="btn-create" class="primary" data-i18n="btnCreate">Crea tavolo</button>
         </div>
 

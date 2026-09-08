@@ -15,6 +15,7 @@ const express = require('express');
 const { Server } = require('socket.io');
 
 const { RoomManager, MAX_PLAYERS, MIN_PLAYERS } = require('./game/rooms');
+const bots = require('./game/bots');
 
 const PORT = process.env.PORT || 3000;
 const REVEAL_MS = 20000; // durata max della rivelazione prima del round successivo
@@ -46,6 +47,7 @@ function roomStatePayload(room) {
       diceCount: g ? g.diceCount : room.dicePerPlayer,
       alive: g ? g.alive : true,
       dice: g ? g.dice : null, // valorizzato solo in reveal/gameOver
+      isBot: !!p.isBot,
     };
   });
   const absent = absentPlayers(room);
@@ -183,6 +185,218 @@ function broadcastRoom(room) {
       }
     }
   }
+  pumpBots(room);
+}
+
+// ==================== BOT: guida del tavolo ====================
+// Dopo OGNI broadcast, pumpBots pianifica AL PIÙ un'azione bot (con ritardo
+// "umano"). L'azione, una volta eseguita, ri-broadcasta → la pompa riparte.
+// Al momento dell'esecuzione lo stato viene sempre ri-validato: se nel
+// frattempo un umano ha mosso, l'azione decade senza effetti.
+
+function isBotId(room, id) {
+  const p = room.players.find((x) => x.id === id);
+  return !!(p && p.isBot);
+}
+
+/** La "vista" del bot: SOLO i suoi dadi + informazioni pubbliche del tavolo. */
+function botView(room, botId) {
+  const g = room.game;
+  const gp = g.players.find((p) => p.id === botId);
+  return {
+    myDice: gp ? gp.dice : [],
+    totalDice: g.players.reduce((s, p) => s + p.diceCount, 0),
+    currentBid: g.currentBid
+      ? { quantity: g.currentBid.quantity, face: g.currentBid.face }
+      : null,
+    wild: g.wildActive(),
+    palifico: g.palifico,
+    lockedFace: g.lockedFace,
+    canChangeFace: !!(gp && gp.diceCount === 1),
+  };
+}
+
+/** Post-passi di una mossa che può chiudere il round (dubito/calza). */
+function afterBotMove(room) {
+  if (room.game.phase === 'gameOver') {
+    room.status = 'finished';
+  } else if (room.game.phase === 'reveal') {
+    room.readyNext = new Set();
+  }
+  broadcastRoom(room);
+  if (room.game && room.game.phase === 'reveal') {
+    scheduleNextRound(room);
+  }
+}
+
+/** Decide la prossima azione bot da pianificare (o null). */
+function planNextBotAction(room) {
+  const g = room.game;
+  const brains = room.botBrains || {};
+
+  if (g.phase === 'reveal') {
+    // I bot si dichiarano "pronti" con calma: il ritmo lo detta l'umano.
+    const active = activePlayerIds(room);
+    const waiting = active.filter(
+      (id) => isBotId(room, id) && !(room.readyNext && room.readyNext.has(id))
+    );
+    if (!waiting.length) return null;
+    const id = waiting[0];
+    return {
+      delay: bots.thinkDelay(brains[id], 'ready'),
+      run: () => {
+        if (!room.game || room.game.phase !== 'reveal') return pumpBots(room);
+        if (!room.readyNext) room.readyNext = new Set();
+        room.readyNext.add(id);
+        const act = activePlayerIds(room);
+        const allReady = act.length > 0 && act.every((x) => room.readyNext.has(x));
+        if (allReady) {
+          if (room._revealTimer) {
+            clearTimeout(room._revealTimer);
+            room._revealTimer = null;
+          }
+          room.game.startNextRound();
+          room.readyNext = new Set();
+          room.rolled = new Set();
+          room.bidLog = [];
+        }
+        broadcastRoom(room);
+      },
+    };
+  }
+
+  if (g.phase !== 'bidding') return null;
+  const gs = g.publicState();
+
+  // 1) Lanci: un bot alla volta "scuote il bicchiere".
+  const toRoll = mustRollIds(room, gs).filter(
+    (id) => isBotId(room, id) && !(room.rolled && room.rolled.has(id))
+  );
+  if (toRoll.length) {
+    const id = toRoll[0];
+    return {
+      delay: bots.thinkDelay(brains[id], 'roll'),
+      run: () => {
+        if (!room.game || room.game.phase !== 'bidding') return pumpBots(room);
+        if (!room.rolled) room.rolled = new Set();
+        room.rolled.add(id);
+        broadcastRoom(room);
+      },
+    };
+  }
+
+  // 2) Scelta Palifico in sospeso di un bot.
+  if (g.palificoPending && isBotId(room, g.palificoPendingId)) {
+    const id = g.palificoPendingId;
+    const pers = brains[id];
+    return {
+      delay: bots.thinkDelay(pers, 'palifico'),
+      run: () => {
+        if (!room.game || !room.game.palificoPending || room.game.palificoPendingId !== id) {
+          return pumpBots(room);
+        }
+        room.game.choosePalifico(id, bots.choosePalificoBot(pers));
+        broadcastRoom(room);
+      },
+    };
+  }
+
+  if (!allRolled(room) || g.palificoPending) return null;
+
+  // 3) Calza fuori turno (modalità calza): ogni dichiarazione viene valutata
+  //    UNA volta; il primo bot convinto ci prova (anti-stale già nell'engine).
+  if (room.mode === 'calza' && g.currentBid && !g.palifico) {
+    const bidKey =
+      g.roundNumber + ':' + g.currentBid.quantity + 'x' + g.currentBid.face + ':' + g.currentBid.playerId;
+    if (room._calzaEval !== bidKey) {
+      room._calzaEval = bidKey;
+      const turnP = g.currentPlayer();
+      const cands = room.players.filter((p) => p.isBot).sort(() => Math.random() - 0.5);
+      for (const p of cands) {
+        const gp = g.players.find((x) => x.id === p.id);
+        if (!gp || !gp.alive || gp.diceCount >= g.dicePerPlayer) continue;
+        if (p.id === g.currentBid.playerId) continue;
+        if (g.calzaRule === 'official' && turnP && p.id === turnP.id) continue;
+        if (!bots.considerCalza(botView(room, p.id), brains[p.id])) continue;
+        const expected = { quantity: g.currentBid.quantity, face: g.currentBid.face };
+        return {
+          delay: bots.thinkDelay(brains[p.id], 'calza'),
+          run: () => {
+            if (!room.game) return;
+            const res = room.game.calza(p.id, expected);
+            if (res.ok) afterBotMove(room);
+            else pumpBots(room);
+          },
+        };
+      }
+    }
+  }
+
+  // 4) Turno di un bot: dubita o rilancia.
+  const turn = g.currentPlayer();
+  if (turn && turn.alive && isBotId(room, turn.id)) {
+    const pers = brains[turn.id];
+    const bidBefore = g.currentBid
+      ? g.currentBid.quantity + 'x' + g.currentBid.face
+      : 'open';
+    return {
+      delay: bots.thinkDelay(pers, 'turn'),
+      run: () => {
+        const g2 = room.game;
+        if (!g2 || g2.phase !== 'bidding' || g2.palificoPending) return pumpBots(room);
+        const t2 = g2.currentPlayer();
+        const bidNow = g2.currentBid ? g2.currentBid.quantity + 'x' + g2.currentBid.face : 'open';
+        if (!t2 || t2.id !== turn.id || bidNow !== bidBefore) return pumpBots(room);
+
+        const view = botView(room, turn.id);
+        let action = bots.chooseTurnAction(view, pers);
+        if (action.type === 'doubt' && !g2.currentBid) action = bots.fallbackAction(view);
+
+        let res;
+        if (action.type === 'doubt') {
+          res = g2.challenge(turn.id);
+        } else {
+          res = g2.placeBid(turn.id, action.quantity, action.face);
+          if (!res.ok) {
+            const fb = bots.fallbackAction(view);
+            action = fb;
+            res = g2.placeBid(turn.id, fb.quantity, fb.face);
+          }
+          if (!res.ok && g2.currentBid) {
+            action = { type: 'doubt' };
+            res = g2.challenge(turn.id);
+          }
+          if (res.ok && action.type === 'bid') {
+            if (!room.bidLog) room.bidLog = [];
+            room.bidLog.push({ name: turn.name, quantity: action.quantity, face: action.face });
+          }
+        }
+        if (!res || !res.ok) return pumpBots(room);
+        afterBotMove(room);
+      },
+    };
+  }
+
+  return null;
+}
+
+/** Pianifica (o ri-pianifica) la prossima azione bot della stanza. */
+function pumpBots(room) {
+  if (!room || !room.players.some((p) => p.isBot)) return;
+  if (room._botTimer) {
+    clearTimeout(room._botTimer);
+    room._botTimer = null;
+  }
+  if (room.status !== 'playing' || !room.game || isPaused(room)) return;
+  const plan = planNextBotAction(room);
+  if (!plan) return;
+  room._botTimer = setTimeout(() => {
+    room._botTimer = null;
+    if (manager.getRoom(room.code) !== room) return; // stanza chiusa nel frattempo
+    if (room.status !== 'playing' || !room.game || isPaused(room)) return;
+    plan.run();
+  }, plan.delay);
+  room._botTimer.unref && room._botTimer.unref();
 }
 
 /** Pianifica il passaggio al round successivo dopo la rivelazione. */
@@ -211,8 +425,8 @@ function ack(cb, data) {
 
 io.on('connection', (socket) => {
   // --- Creazione tavolo (host) ---
-  socket.on('createRoom', ({ hostName, dicePerPlayer, mode, calzaRule } = {}, cb) => {
-    const res = manager.createRoom(hostName, dicePerPlayer, mode, calzaRule);
+  socket.on('createRoom', ({ hostName, dicePerPlayer, mode, calzaRule, bots } = {}, cb) => {
+    const res = manager.createRoom(hostName, dicePerPlayer, mode, calzaRule, bots);
     if (res.error) return ack(cb, { ok: false, error: res.error });
     const { room, player } = res;
     player.socketId = socket.id;

@@ -13,6 +13,7 @@
 
 const crypto = require('crypto');
 const { Game } = require('./engine');
+const { makeBots } = require('./bots');
 
 // Alfabeto senza caratteri ambigui (niente 0/O/1/I) per i codici stanza.
 const CODE_ALPHABET = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -64,12 +65,13 @@ class RoomManager {
     return code;
   }
 
-  createRoom(hostName, dicePerPlayer, mode, calzaRule) {
+  createRoom(hostName, dicePerPlayer, mode, calzaRule, botCount) {
     const name = sanitizeName(hostName);
     if (!name) return { error: 'Inserisci un nome.' };
     const dice = Math.max(1, Math.min(5, parseInt(dicePerPlayer, 10) || 5));
     const gameMode = ['standard', 'jolly', 'calza'].includes(mode) ? mode : 'standard';
     const rule = calzaRule === 'house' ? 'house' : 'official';
+    const nBots = Math.max(0, Math.min(MAX_PLAYERS - 1, parseInt(botCount, 10) || 0));
     const code = this._freshCode();
     const host = {
       id: newId(),
@@ -91,7 +93,21 @@ class RoomManager {
       rolled: new Set(), // chi ha "lanciato" i dadi nel round corrente
       bidLog: [], // storico dichiarazioni del round corrente
       chat: [], // storico messaggi
+      botBrains: {}, // playerId -> personalità del bot
     };
+    // Bot al tavolo: giocatori a tutti gli effetti, sempre "connessi".
+    for (const b of makeBots(nBots, [name])) {
+      const bot = {
+        id: newId(),
+        token: newToken(),
+        name: b.name,
+        isHost: false,
+        connected: true,
+        isBot: true,
+      };
+      room.players.push(bot);
+      room.botBrains[bot.id] = b.personality;
+    }
     this.rooms.set(code, room);
     return { room, player: host };
   }
@@ -167,7 +183,8 @@ class RoomManager {
       player.socketId = null;
       player.left = true; // abbandono ESPLICITO (pulsante): mostra il codice per rientrare
     }
-    if (room.players.every((p) => !p.connected)) {
+    // I bot non contano come presenza umana: un tavolo di soli bot è "vuoto".
+    if (room.players.every((p) => p.isBot || !p.connected)) {
       room.emptySince = Date.now();
     }
     return { room, player };
@@ -252,7 +269,7 @@ class RoomManager {
       room.players = room.players.filter((p) => p.id !== playerId);
     }
 
-    if (room.players.every((p) => !p.connected)) {
+    if (room.players.every((p) => p.isBot || !p.connected)) {
       room.emptySince = Date.now();
     }
     return true;

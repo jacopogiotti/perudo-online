@@ -96,6 +96,8 @@ const state = {
   unread: 0,
   mode: 'standard', // modalità scelta in creazione: standard | jolly | calza
   calzaRule: 'official', // versione della Calza scelta in creazione: official | house
+  opponents: 'friends', // avversari alla creazione: friends | bots
+  botCount: 3, // bot al tavolo (1..7) quando opponents === 'bots'
   spectatorDice: null, // { round, players: [{id, dice}] } — solo se sono eliminato
 };
 
@@ -510,13 +512,38 @@ document.querySelectorAll('#calza-rule .cr-opt').forEach((btn) => {
   });
 });
 
+// Avversari: amici online oppure bot (con stepper per il numero).
+document.querySelectorAll('#opp-picker .mode-opt').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    state.opponents = btn.dataset.opp;
+    document.querySelectorAll('#opp-picker .mode-opt').forEach((b) =>
+      b.classList.toggle('selected', b === btn)
+    );
+    $('#bot-count').classList.toggle('hidden', state.opponents !== 'bots');
+  });
+});
+$('#bots-minus').addEventListener('click', () => {
+  state.botCount = Math.max(1, state.botCount - 1);
+  $('#bots-val').textContent = state.botCount;
+});
+$('#bots-plus').addEventListener('click', () => {
+  state.botCount = Math.min(7, state.botCount + 1); // tavolo max 8: tu + 7 bot
+  $('#bots-val').textContent = state.botCount;
+});
+
 $('#btn-create').addEventListener('click', () => {
   const hostName = $('#host-name').value;
   const dicePerPlayer = $('#dice-count').value;
   if (!hostName.trim()) return toast(t('toastName'));
   socket.emit(
     'createRoom',
-    { hostName, dicePerPlayer, mode: state.mode, calzaRule: state.calzaRule },
+    {
+      hostName,
+      dicePerPlayer,
+      mode: state.mode,
+      calzaRule: state.calzaRule,
+      bots: state.opponents === 'bots' ? state.botCount : 0,
+    },
     (res) => {
     if (!res.ok) return toast(res.error);
     state.me = { code: res.code, playerId: res.playerId, isHost: true, token: res.token };
@@ -585,10 +612,11 @@ function renderLobby(room) {
   room.players.forEach((p) => {
     const li = document.createElement('li');
     li.innerHTML = `
-      <span class="avatar">${initials(p.name)}</span>
+      <span class="avatar">${p.isBot ? '🤖' : initials(p.name)}</span>
       <span class="p-name">${escapeHtml(p.name)}</span>
       ${p.isHost ? '<span class="badge host">HOST</span>' : ''}
-      ${!p.connected ? '<span class="badge off">offline</span>' : ''}
+      ${p.isBot ? '<span class="badge">BOT</span>' : ''}
+      ${!p.connected && !p.isBot ? '<span class="badge off">offline</span>' : ''}
     `;
     if (state.me.isHost && !p.isHost) {
       const btn = document.createElement('button');
