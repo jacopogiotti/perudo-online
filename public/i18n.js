@@ -38,7 +38,7 @@ const I18N = {
     // lobby
     btnShare: '📋 Copia link invito',
     players: 'Giocatori',
-    addBot: '🤖 Aggiungi',
+    addBot: '🤖 Aggiungi bot',
     btnStart: 'Avvia partita',
     btnCloseLobby: 'Chiudi tavolo',
     guestWait: "In attesa che l'host avvii la partita…",

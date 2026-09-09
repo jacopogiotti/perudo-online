@@ -1279,28 +1279,34 @@ button:disabled {
   color: var(--gold);
 }
 
-/* frecce per riordinare i giocatori (lobby locale, solo host) */
-.row-actions {
-  margin-left: auto;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-}
-.row-actions .kick {
-  margin-left: 0;
-}
-.move-btn {
+/* maniglia ☰ per trascinare i giocatori (lobby locale, solo host) */
+.drag-handle {
   width: 30px;
-  height: 30px;
-  border-radius: 8px;
-  padding: 0;
-  background: var(--card-2);
-  border: 1px solid var(--line);
-  color: var(--text);
-  font-size: 11px;
+  height: 34px;
+  flex: none;
+  display: grid;
+  place-items: center;
+  cursor: grab;
+  touch-action: none; /* il dito trascina la riga, non scrolla la pagina */
+  opacity: 0.7;
 }
-.move-btn:disabled {
-  opacity: 0.25;
+.drag-handle::before {
+  content: '';
+  width: 16px;
+  height: 2px;
+  border-radius: 2px;
+  background: #fff;
+  box-shadow: 0 -5px 0 #fff, 0 5px 0 #fff;
+}
+#lobby-players li.dragging {
+  background: var(--card-2);
+  border-radius: 12px;
+  opacity: 0.92;
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+}
+#lobby-players li.dragging .drag-handle {
+  cursor: grabbing;
+  opacity: 1;
 }
 
 /* --- avversari: amici online o bot --- */

@@ -408,10 +408,13 @@ const Local = (() => {
       case 'movePlayer': {
         if (sim.status !== 'lobby') return ko("Si può riordinare solo prima dell'avvio.");
         const idx = sim.players.findIndex((p) => p.id === data.playerId);
-        const to = idx + (data.dir < 0 ? -1 : 1);
-        if (idx < 0 || to < 0 || to >= sim.players.length) return ko('Mossa non valida.');
-        const [pl] = sim.players.splice(idx, 1);
-        sim.players.splice(to, 0, pl);
+        if (idx < 0) return ko('Mossa non valida.');
+        let to = Number.isInteger(data.to) ? data.to : idx + (data.dir < 0 ? -1 : 1);
+        to = Math.max(0, Math.min(sim.players.length - 1, to));
+        if (to !== idx) {
+          const [pl] = sim.players.splice(idx, 1);
+          sim.players.splice(to, 0, pl);
+        }
         ok();
         return broadcast();
       }

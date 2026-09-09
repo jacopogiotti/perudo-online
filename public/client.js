@@ -623,6 +623,43 @@ $('#calza-warn-back').addEventListener('click', () => {
   $('#calza-warn').classList.add('hidden');
 });
 
+/** Trascinamento di una riga della lista giocatori tramite la maniglia ☰.
+ *  Anteprima live spostando la riga nel DOM; al rilascio si conferma la
+ *  posizione con 'movePlayer' (che ri-broadcasta lo stato). */
+function attachDragReorder(handle, li, playerId) {
+  handle.addEventListener('pointerdown', (e) => {
+    e.preventDefault();
+    const ul = li.parentElement;
+    try {
+      handle.setPointerCapture(e.pointerId);
+    } catch (_) {
+      /* eventi sintetici o browser senza capture: si va di listener diretti */
+    }
+    li.classList.add('dragging');
+    const move = (ev) => {
+      const el = document.elementFromPoint(ev.clientX, ev.clientY);
+      const over = el && el.closest ? el.closest('#lobby-players li') : null;
+      if (!over || over === li) return;
+      const r = over.getBoundingClientRect();
+      if (ev.clientY < r.top + r.height / 2) ul.insertBefore(li, over);
+      else ul.insertBefore(li, over.nextSibling);
+    };
+    const up = () => {
+      handle.removeEventListener('pointermove', move);
+      handle.removeEventListener('pointerup', up);
+      handle.removeEventListener('pointercancel', up);
+      li.classList.remove('dragging');
+      const to = [...ul.children].indexOf(li);
+      gameEmit('movePlayer', { playerId, to }, (r) => {
+        if (!r.ok) toast(r.error);
+      });
+    };
+    handle.addEventListener('pointermove', move);
+    handle.addEventListener('pointerup', up);
+    handle.addEventListener('pointercancel', up);
+  });
+}
+
 /** Disposizione dei posti intorno al tavolo (solo lobby locale).
  *  L'ordine intorno al tavolo, in senso orario dal basso, è l'ordine di gioco. */
 function renderTableView(room) {
@@ -658,7 +695,7 @@ function renderLobby(room) {
   ul.innerHTML = '';
   const canReorder =
     !!room.local && state.me.isHost && room.status === 'lobby' && room.players.length > 1;
-  room.players.forEach((p, idx) => {
+  room.players.forEach((p) => {
     const li = document.createElement('li');
     li.innerHTML = `
       <span class="avatar">${p.isBot ? '🤖' : initials(p.name)}</span>
@@ -667,23 +704,13 @@ function renderLobby(room) {
       ${p.isBot ? '<span class="badge">BOT</span>' : ''}
       ${!p.connected && !p.isBot ? '<span class="badge off">offline</span>' : ''}
     `;
-    const actions = document.createElement('span');
-    actions.className = 'row-actions';
     if (canReorder) {
-      // Frecce: spostano il giocatore intorno al tavolo (= ordine di gioco).
-      [[-1, '▲', idx === 0], [1, '▼', idx === room.players.length - 1]].forEach(
-        ([dir, label, off]) => {
-          const mv = document.createElement('button');
-          mv.className = 'move-btn';
-          mv.textContent = label;
-          mv.disabled = off;
-          mv.onclick = () =>
-            gameEmit('movePlayer', { playerId: p.id, dir }, (r) => {
-              if (!r.ok) toast(r.error);
-            });
-          actions.appendChild(mv);
-        }
-      );
+      // Maniglia ☰: trascina il giocatore dove vuoi (= posto intorno al tavolo).
+      const handle = document.createElement('span');
+      handle.className = 'drag-handle';
+      handle.setAttribute('aria-label', 'Trascina per riordinare');
+      attachDragReorder(handle, li, p.id);
+      li.prepend(handle);
     }
     if (state.me.isHost && !p.isHost) {
       const btn = document.createElement('button');
@@ -693,9 +720,8 @@ function renderLobby(room) {
         gameEmit('kickPlayer', { playerId: p.id }, (r) => {
           if (!r.ok) toast(r.error);
         });
-      actions.appendChild(btn);
+      li.appendChild(btn);
     }
-    if (actions.children.length) li.appendChild(actions);
     ul.appendChild(li);
   });
 
