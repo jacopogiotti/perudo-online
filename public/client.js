@@ -641,15 +641,40 @@ function attachDragReorder(handle, li, playerId) {
       /* eventi sintetici o capture non disponibile: i listener su window bastano */
     }
     li.classList.add('dragging');
+    li.style.pointerEvents = 'none'; // così il dito "vede" le righe sottostanti
+    const startY = e.clientY;
+    let adj = 0; // compensa i cambi di posizione nel flusso quando la riga viene spostata
+    const follow = (y) => {
+      li.style.transform = `translateY(${y - startY + adj}px)`;
+    };
+    follow(e.clientY);
     const stopTouch = (tev) => tev.preventDefault(); // niente scroll durante il drag
     const move = (ev) => {
       if (ev.pointerId !== e.pointerId) return;
+      follow(ev.clientY); // la riga resta "in mano"
       const el = document.elementFromPoint(ev.clientX, ev.clientY);
       const over = el && el.closest ? el.closest('#lobby-players li') : null;
       if (!over || over === li) return;
       const r = over.getBoundingClientRect();
+      // FLIP: memorizza dove sono le altre righe, riordina, poi falle scivolare.
+      const beforeTop = li.getBoundingClientRect().top;
+      const rects = new Map(
+        [...ul.children].filter((c) => c !== li).map((c) => [c, c.getBoundingClientRect().top])
+      );
       if (ev.clientY < r.top + r.height / 2) ul.insertBefore(li, over);
       else ul.insertBefore(li, over.nextSibling);
+      adj -= li.getBoundingClientRect().top - beforeTop; // posizione visiva invariata
+      follow(ev.clientY);
+      for (const c of ul.children) {
+        if (c === li || !rects.has(c)) continue;
+        const d = rects.get(c) - c.getBoundingClientRect().top;
+        if (!d) continue;
+        c.style.transition = 'none';
+        c.style.transform = `translateY(${d}px)`;
+        void c.offsetHeight; // reflow: parte dalla vecchia posizione…
+        c.style.transition = 'transform 0.16s ease';
+        c.style.transform = ''; // …e scivola in quella nuova
+      }
     };
     const up = (ev) => {
       if (ev && ev.pointerId !== undefined && ev.pointerId !== e.pointerId) return;
@@ -658,6 +683,12 @@ function attachDragReorder(handle, li, playerId) {
       window.removeEventListener('pointercancel', up);
       window.removeEventListener('touchmove', stopTouch);
       li.classList.remove('dragging');
+      li.style.pointerEvents = '';
+      li.style.transform = '';
+      for (const c of ul.children) {
+        c.style.transition = '';
+        c.style.transform = '';
+      }
       const to = [...ul.children].indexOf(li);
       gameEmit('movePlayer', { playerId, to }, (r) => {
         if (!r.ok) toast(r.error);

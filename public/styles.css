@@ -1306,10 +1306,13 @@ button:disabled {
   box-shadow: 0 -5px 0 #fff, 0 5px 0 #fff;
 }
 #lobby-players li.dragging {
+  position: relative;
+  z-index: 5;
   background: var(--card-2);
   border-radius: 12px;
-  opacity: 0.92;
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35);
+  opacity: 0.95;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.45);
+  will-change: transform;
 }
 #lobby-players li.dragging .drag-handle {
   cursor: grabbing;
