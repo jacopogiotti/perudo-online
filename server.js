@@ -686,6 +686,15 @@ io.on('connection', (socket) => {
     broadcastRoom(res.room);
   });
 
+  // --- Spostamento di un giocatore al tavolo (host, solo in lobby) ---
+  socket.on('movePlayer', ({ playerId, to } = {}, cb) => {
+    const ctx = socket.data || {};
+    const res = manager.movePlayer(ctx.code, ctx.playerId, playerId, to);
+    if (res.error) return ack(cb, { ok: false, error: res.error });
+    ack(cb, { ok: true });
+    broadcastRoom(res.room);
+  });
+
   // --- Espulsione giocatore (host, solo in lobby) ---
   socket.on('kickPlayer', ({ playerId } = {}, cb) => {
     const ctx = socket.data || {};

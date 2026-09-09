@@ -113,7 +113,10 @@
         <header class="lobby-head">
           <p class="muted" data-i18n="codeLabel">Codice tavolo</p>
           <div class="room-code" id="lobby-code">----</div>
-          <button id="btn-share" class="ghost" data-i18n="btnShare">📋 Copia link invito</button>
+          <div class="lobby-head-actions">
+            <button id="btn-share" class="ghost" data-i18n="btnShare">📋 Copia link invito</button>
+            <button id="btn-seating" class="ghost" data-i18n="btnSeating">🪑 Disposizione tavolo</button>
+          </div>
         </header>
 
         <!-- Disposizione dei posti intorno al tavolo (lobby locale) -->
@@ -276,6 +279,17 @@
           </div>
           <p class="muted" id="pause-hint"></p>
           <button id="pause-action" class="danger-ghost"></button>
+        </div>
+      </div>
+
+      <!-- ============ DISPOSIZIONE TAVOLO (lobby online) ============ -->
+      <div id="seating-overlay" class="overlay hidden">
+        <div class="overlay-card seating-card">
+          <h2 data-i18n="seatingTitle">Disposizione del tavolo</h2>
+          <div id="seating-table" class="table-view"></div>
+          <ul id="seating-list" class="players-list seating-list"></ul>
+          <p class="hint" id="seating-hint"></p>
+          <button id="btn-seating-close" class="primary" data-i18n="seatingClose">Fatto</button>
         </div>
       </div>
 

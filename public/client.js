@@ -653,8 +653,8 @@ function attachDragReorder(handle, li, playerId) {
       if (ev.pointerId !== e.pointerId) return;
       follow(ev.clientY); // la riga resta "in mano"
       const el = document.elementFromPoint(ev.clientX, ev.clientY);
-      const over = el && el.closest ? el.closest('#lobby-players li') : null;
-      if (!over || over === li) return;
+      const over = el && el.closest ? el.closest('li') : null;
+      if (!over || over === li || over.parentElement !== ul) return;
       const r = over.getBoundingClientRect();
       // FLIP: memorizza dove sono le altre righe, riordina, poi falle scivolare.
       const beforeTop = li.getBoundingClientRect().top;
@@ -701,13 +701,8 @@ function attachDragReorder(handle, li, playerId) {
   });
 }
 
-/** Disposizione dei posti intorno al tavolo (solo lobby locale).
- *  L'ordine intorno al tavolo, in senso orario dal basso, è l'ordine di gioco. */
-function renderTableView(room) {
-  const tv = $('#table-view');
-  const show = !!room.local && room.status === 'lobby';
-  tv.classList.toggle('hidden', !show);
-  if (!show) return;
+/** HTML dei posti intorno al tavolo: in senso orario dal basso = ordine di gioco. */
+function tableSeatsHtml(room) {
   const n = room.players.length;
   const seats = room.players
     .map((p, i) => {
@@ -721,13 +716,63 @@ function renderTableView(room) {
       </div>`;
     })
     .join('');
-  tv.innerHTML = `<div class="tv-felt">🎲</div>${seats}`;
+  return `<div class="tv-felt">🎲</div>${seats}`;
+}
+
+/** Tavolo in cima alla lobby (solo partite locali). */
+function renderTableView(room) {
+  const tv = $('#table-view');
+  const show = !!room.local && room.status === 'lobby';
+  tv.classList.toggle('hidden', !show);
+  if (!show) return;
+  tv.innerHTML = tableSeatsHtml(room);
+}
+
+// ---------- Disposizione tavolo (sotto-schermata, lobby online) ----------
+function seatingOpen() {
+  $('#seating-overlay').classList.remove('hidden');
+  if (state.room) renderSeating(state.room);
+}
+function seatingClose() {
+  $('#seating-overlay').classList.add('hidden');
+}
+$('#btn-seating').addEventListener('click', seatingOpen);
+$('#btn-seating-close').addEventListener('click', seatingClose);
+
+/** Ridisegna tavolo + lista trascinabile nella sotto-schermata (se aperta). */
+function renderSeating(room) {
+  const overlay = $('#seating-overlay');
+  if (overlay.classList.contains('hidden')) return;
+  if (room.status !== 'lobby') return seatingClose(); // partita avviata: si chiude
+  $('#seating-table').innerHTML = tableSeatsHtml(room);
+  const canReorder = state.me.isHost && room.players.length > 1;
+  $('#seating-hint').textContent = canReorder ? t('seatingHintHost') : t('seatingHintGuest');
+  const ul = $('#seating-list');
+  ul.innerHTML = '';
+  room.players.forEach((p) => {
+    const li = document.createElement('li');
+    li.innerHTML = `
+      <span class="avatar">${p.isBot ? '🤖' : initials(p.name)}</span>
+      <span class="p-name">${escapeHtml(p.name)}</span>
+      ${p.isHost ? '<span class="badge host">HOST</span>' : ''}
+      ${p.isBot ? '<span class="badge">BOT</span>' : ''}
+    `;
+    if (canReorder) {
+      const handle = document.createElement('span');
+      handle.className = 'drag-handle';
+      handle.setAttribute('aria-label', 'Trascina per riordinare');
+      attachDragReorder(handle, li, p.id);
+      li.prepend(handle);
+    }
+    ul.appendChild(li);
+  });
 }
 
 function renderLobby(room) {
   // Partita locale: niente codice tavolo né link d'invito.
   document.querySelector('.lobby-head').classList.toggle('hidden', !!room.local);
   renderTableView(room);
+  renderSeating(room);
   $('#lobby-code').textContent = room.code || '----';
   $('#game-code').textContent = room.code || '----';
   $('#lobby-count').textContent = `${room.players.length}/${room.maxPlayers}`;

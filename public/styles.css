@@ -1292,10 +1292,41 @@ button:disabled {
 }
 /* niente selezione/callout da long-press: su mobile cancellerebbero il drag */
 #lobby-players li,
+.seating-list li,
 .drag-handle {
   user-select: none;
   -webkit-user-select: none;
   -webkit-touch-callout: none;
+}
+
+/* --- lobby online: azioni in testata + sotto-schermata disposizione --- */
+.lobby-head-actions {
+  display: flex;
+  gap: 8px;
+}
+.lobby-head-actions .ghost {
+  flex: 1;
+  font-size: 13px;
+  padding-left: 8px;
+  padding-right: 8px;
+}
+.seating-card {
+  max-width: 420px;
+  gap: 8px;
+}
+.seating-card .table-view {
+  height: 185px;
+  margin-bottom: 0;
+}
+.seating-list {
+  text-align: left;
+  max-height: 42vh;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+}
+#seating-hint {
+  margin: 0;
 }
 .drag-handle::before {
   content: '';

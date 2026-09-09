@@ -231,6 +231,29 @@ class RoomManager {
     return { room, bot };
   }
 
+  /** Sposta un giocatore in una posizione della lista (= posto al tavolo).
+   *  Solo host, solo in lobby: l'ordine della lista è l'ordine di gioco. */
+  movePlayer(code, requesterId, playerId, to) {
+    const room = this.getRoom(code);
+    if (!room) return { error: 'Tavolo non trovato.' };
+    if (requesterId !== room.hostId) {
+      return { error: "Solo l'host può cambiare i posti." };
+    }
+    if (room.status !== 'lobby') {
+      return { error: "I posti si cambiano prima dell'avvio." };
+    }
+    const idx = room.players.findIndex((p) => p.id === playerId);
+    if (idx < 0) return { error: 'Giocatore non trovato.' };
+    let t = parseInt(to, 10);
+    if (!Number.isInteger(t)) return { error: 'Mossa non valida.' };
+    t = Math.max(0, Math.min(room.players.length - 1, t));
+    if (t !== idx) {
+      const [pl] = room.players.splice(idx, 1);
+      room.players.splice(t, 0, pl);
+    }
+    return { room };
+  }
+
   startGame(code, requesterId) {
     const room = this.getRoom(code);
     if (!room) return { error: 'Tavolo non trovato.' };
