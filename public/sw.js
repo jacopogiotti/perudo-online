@@ -8,7 +8,7 @@
  */
 'use strict';
 
-const CACHE = 'perudo-cache-v1';
+const CACHE = 'perudo-cache-v2';
 const CORE = [
   '/',
   '/index.html',
@@ -20,9 +20,9 @@ const CORE = [
   '/lib/bots.js',
   '/socket.io/socket.io.js',
   '/manifest.webmanifest',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png',
-  '/icons/apple-touch-icon.png',
+  '/icons/icon-192-v2.png',
+  '/icons/icon-512-v2.png',
+  '/icons/apple-touch-icon-v2.png',
 ];
 
 self.addEventListener('install', (e) => {
