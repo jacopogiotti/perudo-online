@@ -146,6 +146,20 @@
         </div>
       </section>
 
+      <!-- ============ DISPOSIZIONE TAVOLO (schermata, lobby online) ============ -->
+      <section id="screen-seating" class="screen">
+        <div id="seating-table" class="table-view"></div>
+        <div class="card">
+          <div class="row-between">
+            <h2 data-i18n="seatingTitle">Disposizione del tavolo</h2>
+            <span class="muted" id="seating-count"></span>
+          </div>
+          <ul id="seating-list" class="players-list seating-list"></ul>
+          <p class="hint" id="seating-hint"></p>
+        </div>
+        <button id="btn-seating-close" class="primary" data-i18n="seatingConfirm">Conferma</button>
+      </section>
+
       <!-- ============ GIOCO ============ -->
       <section id="screen-game" class="screen">
         <header class="game-head">
@@ -279,17 +293,6 @@
           </div>
           <p class="muted" id="pause-hint"></p>
           <button id="pause-action" class="danger-ghost"></button>
-        </div>
-      </div>
-
-      <!-- ============ DISPOSIZIONE TAVOLO (lobby online) ============ -->
-      <div id="seating-overlay" class="overlay hidden">
-        <div class="overlay-card seating-card">
-          <h2 data-i18n="seatingTitle">Disposizione del tavolo</h2>
-          <div id="seating-table" class="table-view"></div>
-          <ul id="seating-list" class="players-list seating-list"></ul>
-          <p class="hint" id="seating-hint"></p>
-          <button id="btn-seating-close" class="primary" data-i18n="seatingClose">Fatto</button>
         </div>
       </div>
 

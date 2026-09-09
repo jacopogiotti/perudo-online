@@ -1310,23 +1310,12 @@ button:disabled {
   padding-left: 8px;
   padding-right: 8px;
 }
-.seating-card {
-  max-width: 420px;
-  gap: 8px;
+#screen-seating .table-view {
+  height: 210px;
 }
-.seating-card .table-view {
-  height: 185px;
-  margin-bottom: 0;
-}
-.seating-list {
-  text-align: left;
-  max-height: 42vh;
-  overflow-y: auto;
-  margin: 0;
-  padding: 0;
-}
-#seating-hint {
-  margin: 0;
+#btn-seating-close {
+  width: 100%;
+  margin-top: 14px;
 }
 .drag-handle::before {
   content: '';

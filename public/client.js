@@ -728,23 +728,23 @@ function renderTableView(room) {
   tv.innerHTML = tableSeatsHtml(room);
 }
 
-// ---------- Disposizione tavolo (sotto-schermata, lobby online) ----------
+// ---------- Disposizione tavolo (schermata, lobby online) ----------
+function seatingActive() {
+  return $('#screen-seating').classList.contains('active');
+}
 function seatingOpen() {
-  $('#seating-overlay').classList.remove('hidden');
+  showScreen('screen-seating');
   if (state.room) renderSeating(state.room);
 }
-function seatingClose() {
-  $('#seating-overlay').classList.add('hidden');
-}
 $('#btn-seating').addEventListener('click', seatingOpen);
-$('#btn-seating-close').addEventListener('click', seatingClose);
+$('#btn-seating-close').addEventListener('click', () => showScreen('screen-lobby'));
 
-/** Ridisegna tavolo + lista trascinabile nella sotto-schermata (se aperta). */
+/** Ridisegna tavolo + lista trascinabile nella schermata disposizione (se attiva). */
 function renderSeating(room) {
-  const overlay = $('#seating-overlay');
-  if (overlay.classList.contains('hidden')) return;
-  if (room.status !== 'lobby') return seatingClose(); // partita avviata: si chiude
+  if (!seatingActive()) return;
+  if (room.status !== 'lobby') return; // all'avvio ci pensa onState a cambiare schermata
   $('#seating-table').innerHTML = tableSeatsHtml(room);
+  $('#seating-count').textContent = `${room.players.length}/${room.maxPlayers}`;
   const canReorder = state.me.isHost && room.players.length > 1;
   $('#seating-hint').textContent = canReorder ? t('seatingHintHost') : t('seatingHintGuest');
   const ul = $('#seating-list');
@@ -1572,7 +1572,8 @@ function onState(room) {
     hidePause();
     hideDisconnect();
     renderLobby(room);
-    showScreen('screen-lobby');
+    // Non strappare l'utente dalla schermata disposizione a ogni broadcast.
+    if (!seatingActive()) showScreen('screen-lobby');
   } else {
     renderLobby(room);
     showScreen('screen-game');
