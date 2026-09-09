@@ -5,6 +5,11 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0f1226" />
     <title>Perudo — dadi & bluff</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Perudo" />
     <link rel="stylesheet" href="styles.css" />
     <link
       rel="icon"
@@ -24,6 +29,10 @@
           <h1>Perudo</h1>
           <p class="tagline" data-i18n="tagline">Dadi, azzardo e bluff. L'ultimo con un dado vince.</p>
         </header>
+
+        <p id="offline-note" class="offline-note hidden" data-i18n="offlineNote">
+          📴 Sei offline: puoi giocare contro i bot.
+        </p>
 
         <div class="card">
           <h2 data-i18n="createTitle">Crea un tavolo</h2>
@@ -90,7 +99,7 @@
 
         <div class="divider"><span data-i18n="orSep">oppure</span></div>
 
-        <div class="card">
+        <div class="card" id="join-card">
           <h2 data-i18n="joinTitle">Unisciti a un tavolo</h2>
           <label for="join-code" data-i18n="codeLabel">Codice tavolo</label>
           <input

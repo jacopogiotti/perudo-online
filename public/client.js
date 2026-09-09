@@ -478,6 +478,29 @@ rstory.frame.addEventListener('touchend', (e) => {
   }
 });
 
+// ---------- PWA: service worker + gating offline ----------
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
+
+/** Senza rete restano solo i bot: disabilita amici/unisciti e mostra l'avviso. */
+function updateOnlineUi() {
+  const off = !navigator.onLine;
+  $('#offline-note').classList.toggle('hidden', !off);
+  const friendsBtn = document.querySelector('#opp-picker .mode-opt[data-opp="friends"]');
+  friendsBtn.disabled = off;
+  friendsBtn.classList.toggle('opt-disabled', off);
+  $('#join-card').classList.toggle('card-disabled', off);
+  if (off && state.opponents !== 'bots') {
+    document.querySelector('#opp-picker .mode-opt[data-opp="bots"]').click();
+  }
+}
+window.addEventListener('online', updateOnlineUi);
+window.addEventListener('offline', updateOnlineUi);
+updateOnlineUi();
+
 // ---------- selettore lingua (bandiere in alto) ----------
 function setLang(lang) {
   LANG = lang === 'en' ? 'en' : 'it';

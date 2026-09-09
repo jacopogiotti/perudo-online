@@ -40,6 +40,28 @@ body {
   padding: 20px 16px calc(28px + env(safe-area-inset-bottom));
 }
 
+/* ---------- offline (PWA): resta solo la modalità bot ---------- */
+.offline-note {
+  text-align: center;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--gold);
+  background: rgba(255, 209, 102, 0.1);
+  border: 1px solid rgba(255, 209, 102, 0.45);
+  border-radius: 12px;
+  padding: 9px 12px;
+  margin: 0 0 14px;
+  animation: fade 0.25s ease;
+}
+.card-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.mode-opt.opt-disabled {
+  opacity: 0.45;
+  pointer-events: none;
+}
+
 /* ---------- selettore lingua (home, in alto a destra) ---------- */
 .lang-switch {
   display: flex;
