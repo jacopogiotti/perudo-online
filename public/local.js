@@ -405,6 +405,16 @@ const Local = (() => {
         ok();
         return broadcast();
       }
+      case 'movePlayer': {
+        if (sim.status !== 'lobby') return ko("Si può riordinare solo prima dell'avvio.");
+        const idx = sim.players.findIndex((p) => p.id === data.playerId);
+        const to = idx + (data.dir < 0 ? -1 : 1);
+        if (idx < 0 || to < 0 || to >= sim.players.length) return ko('Mossa non valida.');
+        const [pl] = sim.players.splice(idx, 1);
+        sim.players.splice(to, 0, pl);
+        ok();
+        return broadcast();
+      }
       case 'startGame': {
         if (sim.status !== 'lobby') return ko('La partita è già iniziata.');
         if (sim.players.length < 2) return ko('Servono almeno 2 giocatori.');

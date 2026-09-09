@@ -623,16 +623,42 @@ $('#calza-warn-back').addEventListener('click', () => {
   $('#calza-warn').classList.add('hidden');
 });
 
+/** Disposizione dei posti intorno al tavolo (solo lobby locale).
+ *  L'ordine intorno al tavolo, in senso orario dal basso, è l'ordine di gioco. */
+function renderTableView(room) {
+  const tv = $('#table-view');
+  const show = !!room.local && room.status === 'lobby';
+  tv.classList.toggle('hidden', !show);
+  if (!show) return;
+  const n = room.players.length;
+  const seats = room.players
+    .map((p, i) => {
+      const a = (i * 2 * Math.PI) / n; // 0 = in basso, poi in senso orario
+      const x = 50 + 43 * Math.sin(a);
+      const y = 50 + 38 * Math.cos(a);
+      const me = p.id === state.me.playerId;
+      return `<div class="tv-seat${me ? ' me' : ''}" style="left:${x.toFixed(1)}%;top:${y.toFixed(1)}%">
+        <span class="avatar">${p.isBot ? '🤖' : initials(p.name)}</span>
+        <span class="tv-name">${escapeHtml(p.name)}</span>
+      </div>`;
+    })
+    .join('');
+  tv.innerHTML = `<div class="tv-felt">🎲</div>${seats}`;
+}
+
 function renderLobby(room) {
   // Partita locale: niente codice tavolo né link d'invito.
   document.querySelector('.lobby-head').classList.toggle('hidden', !!room.local);
+  renderTableView(room);
   $('#lobby-code').textContent = room.code || '----';
   $('#game-code').textContent = room.code || '----';
   $('#lobby-count').textContent = `${room.players.length}/${room.maxPlayers}`;
 
   const ul = $('#lobby-players');
   ul.innerHTML = '';
-  room.players.forEach((p) => {
+  const canReorder =
+    !!room.local && state.me.isHost && room.status === 'lobby' && room.players.length > 1;
+  room.players.forEach((p, idx) => {
     const li = document.createElement('li');
     li.innerHTML = `
       <span class="avatar">${p.isBot ? '🤖' : initials(p.name)}</span>
@@ -641,6 +667,24 @@ function renderLobby(room) {
       ${p.isBot ? '<span class="badge">BOT</span>' : ''}
       ${!p.connected && !p.isBot ? '<span class="badge off">offline</span>' : ''}
     `;
+    const actions = document.createElement('span');
+    actions.className = 'row-actions';
+    if (canReorder) {
+      // Frecce: spostano il giocatore intorno al tavolo (= ordine di gioco).
+      [[-1, '▲', idx === 0], [1, '▼', idx === room.players.length - 1]].forEach(
+        ([dir, label, off]) => {
+          const mv = document.createElement('button');
+          mv.className = 'move-btn';
+          mv.textContent = label;
+          mv.disabled = off;
+          mv.onclick = () =>
+            gameEmit('movePlayer', { playerId: p.id, dir }, (r) => {
+              if (!r.ok) toast(r.error);
+            });
+          actions.appendChild(mv);
+        }
+      );
+    }
     if (state.me.isHost && !p.isHost) {
       const btn = document.createElement('button');
       btn.className = 'kick';
@@ -649,8 +693,9 @@ function renderLobby(room) {
         gameEmit('kickPlayer', { playerId: p.id }, (r) => {
           if (!r.ok) toast(r.error);
         });
-      li.appendChild(btn);
+      actions.appendChild(btn);
     }
+    if (actions.children.length) li.appendChild(actions);
     ul.appendChild(li);
   });
 

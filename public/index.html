@@ -116,6 +116,9 @@
           <button id="btn-share" class="ghost" data-i18n="btnShare">📋 Copia link invito</button>
         </header>
 
+        <!-- Disposizione dei posti intorno al tavolo (lobby locale) -->
+        <div id="table-view" class="table-view hidden" aria-hidden="true"></div>
+
         <div class="card">
           <div class="row-between">
             <h2 data-i18n="players">Giocatori</h2>
@@ -125,8 +128,10 @@
         </div>
 
         <div id="lobby-host-controls" class="card hidden">
-          <p class="muted" id="lobby-dice-info"></p>
-          <button id="btn-add-bot" class="ghost" data-i18n="addBot">🤖 Aggiungi un bot</button>
+          <div class="lobby-info-row">
+            <p class="muted" id="lobby-dice-info"></p>
+            <button id="btn-add-bot" class="ghost" data-i18n="addBot">🤖 Aggiungi un bot</button>
+          </div>
           <button id="btn-start" class="primary" data-i18n="btnStart">Avvia partita</button>
           <p class="hint" id="start-hint"></p>
           <button id="btn-close-lobby" class="ghost danger-ghost" data-i18n="btnCloseLobby">Chiudi tavolo</button>

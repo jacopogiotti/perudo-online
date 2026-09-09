@@ -1193,6 +1193,116 @@ button:disabled {
   line-height: 1.35;
 }
 
+/* --- lobby: riga specifiche tavolo + aggiungi bot --- */
+.lobby-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  flex-wrap: nowrap;
+  margin-bottom: 6px;
+}
+.lobby-info-row #lobby-dice-info {
+  margin: 0;
+  flex: 1;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#btn-add-bot {
+  width: auto;
+  margin: 0;
+  padding: 8px 12px;
+  font-size: 13px;
+  flex: none;
+}
+
+/* --- disposizione dei posti intorno al tavolo (lobby locale) --- */
+.table-view {
+  position: relative;
+  height: 200px;
+  margin-bottom: 14px;
+  animation: fade 0.25s ease;
+}
+.table-view.hidden {
+  display: none;
+}
+.tv-felt {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: 72%;
+  height: 56%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at 50% 30%, #2e3468 0%, #1c2044 70%);
+  border: 9px solid #2a2450;
+  box-shadow: inset 0 0 28px rgba(0, 0, 0, 0.55), 0 10px 24px rgba(0, 0, 0, 0.4);
+  display: grid;
+  place-items: center;
+  font-size: 26px;
+  opacity: 0.95;
+}
+.tv-seat {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  width: 66px;
+  text-align: center;
+}
+.tv-seat .avatar {
+  width: 30px;
+  height: 30px;
+  font-size: 12px;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, 0.45);
+}
+.tv-seat.me .avatar {
+  box-shadow: 0 0 0 2px var(--gold), 0 3px 8px rgba(0, 0, 0, 0.45);
+}
+.tv-name {
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--muted);
+  max-width: 64px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  background: rgba(10, 12, 30, 0.75);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+.tv-seat.me .tv-name {
+  color: var(--gold);
+}
+
+/* frecce per riordinare i giocatori (lobby locale, solo host) */
+.row-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.row-actions .kick {
+  margin-left: 0;
+}
+.move-btn {
+  width: 30px;
+  height: 30px;
+  border-radius: 8px;
+  padding: 0;
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-size: 11px;
+}
+.move-btn:disabled {
+  opacity: 0.25;
+}
+
 /* --- avversari: amici online o bot --- */
 .opp-picker {
   grid-template-columns: 1fr 1fr;
