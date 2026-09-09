@@ -1,4 +1,4 @@
-/* global io, I18N, SERVER_MSG_EN, SERVER_MSG_EN_RX */
+/* global io, I18N, SERVER_MSG_EN, SERVER_MSG_EN_RX, Local */
 'use strict';
 
 // ---------- util ----------
@@ -82,6 +82,12 @@ const socket = io({
   timeout: 20000,
 });
 
+/** Instrada un'azione di gioco al server (online) o alla partita locale. */
+function gameEmit(ev, data, cb) {
+  if (state.local) Local.handle(ev, data, cb || (() => {}));
+  else socket.emit(ev, data, cb || (() => {}));
+}
+
 const state = {
   me: null, // { code, playerId, isHost, token }
   room: null,
@@ -98,6 +104,7 @@ const state = {
   calzaRule: 'official', // versione della Calza scelta in creazione: official | house
   opponents: 'friends', // avversari alla creazione: friends | bots
   botCount: 3, // bot al tavolo (1..7) quando opponents === 'bots'
+  local: false, // true = partita locale contro i bot (nessun server)
   spectatorDice: null, // { round, players: [{id, dice}] } — solo se sono eliminato
 };
 
@@ -127,6 +134,7 @@ function hue(id) {
 }
 
 function saveSession() {
+  if (state.local) return; // le partite locali non hanno sessione da riprendere
   if (state.me) {
     localStorage.setItem(
       SESSION_KEY,
@@ -535,15 +543,22 @@ $('#btn-create').addEventListener('click', () => {
   const hostName = $('#host-name').value;
   const dicePerPlayer = $('#dice-count').value;
   if (!hostName.trim()) return toast(t('toastName'));
-  socket.emit(
-    'createRoom',
-    {
-      hostName,
+  if (state.opponents === 'bots') {
+    // Partita LOCALE contro i bot: niente server, niente codice tavolo.
+    state.local = true;
+    state.me = { code: null, playerId: 'me', isHost: true, token: null };
+    Local.start({
+      hostName: hostName.trim().slice(0, 20),
       dicePerPlayer,
       mode: state.mode,
       calzaRule: state.calzaRule,
-      bots: state.opponents === 'bots' ? state.botCount : 0,
-    },
+      bots: state.botCount,
+    });
+    return;
+  }
+  socket.emit(
+    'createRoom',
+    { hostName, dicePerPlayer, mode: state.mode, calzaRule: state.calzaRule },
     (res) => {
     if (!res.ok) return toast(res.error);
     state.me = { code: res.code, playerId: res.playerId, isHost: true, token: res.token };
@@ -581,13 +596,13 @@ $('#btn-share').addEventListener('click', async () => {
 });
 
 $('#btn-add-bot').addEventListener('click', () => {
-  socket.emit('addBot', {}, (res) => {
+  gameEmit('addBot', {}, (res) => {
     if (!res.ok) toast(res.error);
   });
 });
 
 function startGameNow() {
-  socket.emit('startGame', {}, (res) => {
+  gameEmit('startGame', {}, (res) => {
     if (!res.ok) toast(res.error);
   });
 }
@@ -609,8 +624,10 @@ $('#calza-warn-back').addEventListener('click', () => {
 });
 
 function renderLobby(room) {
-  $('#lobby-code').textContent = room.code;
-  $('#game-code').textContent = room.code;
+  // Partita locale: niente codice tavolo né link d'invito.
+  document.querySelector('.lobby-head').classList.toggle('hidden', !!room.local);
+  $('#lobby-code').textContent = room.code || '----';
+  $('#game-code').textContent = room.code || '----';
   $('#lobby-count').textContent = `${room.players.length}/${room.maxPlayers}`;
 
   const ul = $('#lobby-players');
@@ -629,7 +646,7 @@ function renderLobby(room) {
       btn.className = 'kick';
       btn.textContent = t('kick');
       btn.onclick = () =>
-        socket.emit('kickPlayer', { playerId: p.id }, (r) => {
+        gameEmit('kickPlayer', { playerId: p.id }, (r) => {
           if (!r.ok) toast(r.error);
         });
       li.appendChild(btn);
@@ -668,6 +685,7 @@ function renderGame(room) {
   const isHost = !!(state.me && state.me.isHost);
   $('#btn-end-game').classList.toggle('hidden', !isHost);
   $('#btn-leave').classList.toggle('hidden', isHost);
+  $('#game-code').classList.toggle('hidden', !!room.local);
 
   const rolling = g.rolling || { rolledIds: [], need: [], allRolled: true };
 
@@ -682,7 +700,7 @@ function renderGame(room) {
     state.rolledRound === g.roundNumber &&
     !rolling.rolledIds.includes(state.me.playerId)
   ) {
-    socket.emit('rollDice', {}, () => {});
+    gameEmit('rollDice', {});
   }
 
   // Tavolo giocatori
@@ -900,7 +918,7 @@ $('#my-dice').addEventListener('click', () => {
   const me = room.players.find((p) => p.id === state.me.playerId);
   if (me && !me.alive) return;
   state.rolledRound = g.roundNumber;
-  socket.emit('rollDice', {}, () => {});
+  gameEmit('rollDice', {});
   throwDice(state.myDice, $('#my-dice'));
 });
 
@@ -1024,24 +1042,24 @@ $('#qty-plus').addEventListener('click', () => {
 });
 
 $('#btn-bid').addEventListener('click', () => {
-  socket.emit('placeBid', { quantity: state.qty, face: state.face }, (res) => {
+  gameEmit('placeBid', { quantity: state.qty, face: state.face }, (res) => {
     if (!res.ok) toast(res.error);
   });
 });
 
 $('#btn-doubt').addEventListener('click', () => {
-  socket.emit('challenge', {}, (res) => {
+  gameEmit('challenge', {}, (res) => {
     if (!res.ok) toast(res.error);
   });
 });
 
 $('#btn-palifico-yes').addEventListener('click', () => {
-  socket.emit('choosePalifico', { activate: true }, (res) => {
+  gameEmit('choosePalifico', { activate: true }, (res) => {
     if (!res.ok) toast(res.error);
   });
 });
 $('#btn-palifico-no').addEventListener('click', () => {
-  socket.emit('choosePalifico', { activate: false }, (res) => {
+  gameEmit('choosePalifico', { activate: false }, (res) => {
     if (!res.ok) toast(res.error);
   });
 });
@@ -1051,13 +1069,18 @@ $('#btn-calza').addEventListener('click', () => {
   const expectedBid = g && g.currentBid
     ? { quantity: g.currentBid.quantity, face: g.currentBid.face }
     : null;
-  socket.emit('calza', { expectedBid }, (res) => {
+  gameEmit('calza', { expectedBid }, (res) => {
     if (!res.ok) toast(res.error);
   });
 });
 
 function doEndGame() {
   if (!window.confirm(t('confirmEnd'))) return;
+  if (state.local) {
+    Local.handle('endGame', {}, () => {});
+    location.href = location.pathname;
+    return;
+  }
   socket.emit('endGame', {}, (res) => {
     if (!res.ok) toast(res.error);
   });
@@ -1152,7 +1175,7 @@ function showReveal(room) {
       // Host: sceglie tra rivincita e chiusura tavolo.
       btn.className = 'primary';
       btn.textContent = t('rematch');
-      btn.onclick = () => socket.emit('rematch', {}, (res) => { if (!res.ok) toast(res.error); });
+      btn.onclick = () => gameEmit('rematch', {}, (res) => { if (!res.ok) toast(res.error); });
       btn2.classList.remove('hidden');
       btn2.className = 'danger-ghost';
       btn2.textContent = t('closeTableBtn');
@@ -1181,7 +1204,7 @@ function showReveal(room) {
       btn.textContent = iAmReady ? t('readyBtn') : t('proceedBtn');
       btn.disabled = iAmReady;
       btn.onclick = () => {
-        socket.emit('readyNext', {}, () => {});
+        gameEmit('readyNext', {});
         btn.disabled = true;
         btn.textContent = t('readyBtn');
       };
@@ -1374,13 +1397,13 @@ function escapeHtml(s) {
   );
 }
 
-// ---------- socket handlers ----------
-socket.on('state', (room) => {
+// ---------- gestione stato (condivisa tra socket e partita locale) ----------
+function onState(room) {
   state.room = room;
   const inGame = room.status === 'playing' || room.status === 'finished';
 
-  // Mostra i pulsanti chat e storico solo dentro la partita.
-  $('#chat-toggle').classList.toggle('hidden', !inGame);
+  // Chat solo online (i bot non chattano); storico sempre in partita.
+  $('#chat-toggle').classList.toggle('hidden', !inGame || !!room.local);
   $('#log-toggle').classList.toggle('hidden', !inGame);
   if (!inGame) {
     closeChat();
@@ -1419,18 +1442,37 @@ socket.on('state', (room) => {
       }
     }
   }
-});
+}
 
-socket.on('yourDice', ({ dice }) => {
+function onYourDice({ dice }) {
   state.myDice = dice || [];
   if (state.room && state.room.status === 'playing') renderGame(state.room);
-});
+}
 
 // Dadi di tutti i vivi: arrivano solo se sono eliminato (modalità spettatore).
-socket.on('spectatorDice', ({ round, players }) => {
+function onSpectatorDice({ round, players }) {
   state.spectatorDice = { round, players: players || [] };
   if (state.room && state.room.status === 'playing') renderGame(state.room);
+}
+
+// Online: eventi dal server (ignorati durante una partita locale).
+socket.on('state', (room) => {
+  if (state.local) return;
+  onState(room);
 });
+socket.on('yourDice', (d) => {
+  if (state.local) return;
+  onYourDice(d);
+});
+socket.on('spectatorDice', (d) => {
+  if (state.local) return;
+  onSpectatorDice(d);
+});
+
+// Locale: stessi eventi, emessi dal "server in miniatura" nel browser.
+Local.on('state', onState);
+Local.on('yourDice', onYourDice);
+Local.on('spectatorDice', onSpectatorDice);
 
 socket.on('chatHistory', (msgs) => {
   $('#chat-messages').innerHTML = '';
@@ -1451,6 +1493,7 @@ socket.on('tableClosed', () => {
 });
 
 socket.on('connect', () => {
+  if (state.local) return; // in partita locale il socket non c'entra
   // Ad OGNI (ri)connessione ci si ri-registra al tavolo, così dopo un blip
   // di rete o un reconnect automatico il socket torna a ricevere gli update
   // e a essere associato al proprio posto (fondamentale su mobile).

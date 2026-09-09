@@ -540,7 +540,9 @@ class Game {
   }
 }
 
-module.exports = {
+// Doppio export: CommonJS per il server/test, global per il browser
+// (la modalità locale carica questo stesso file come <script>).
+const ENGINE_EXPORTS = {
   Game,
   validateBid,
   validateBidWild,
@@ -549,3 +551,8 @@ module.exports = {
   countWild,
   rollDie,
 };
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = ENGINE_EXPORTS;
+} else if (typeof window !== 'undefined') {
+  window.PerudoEngine = ENGINE_EXPORTS;
+}

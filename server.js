@@ -28,6 +28,9 @@ const io = new Server(server);
 const manager = new RoomManager();
 
 app.use(express.static(path.join(__dirname, 'public')));
+// Moduli condivisi con la modalità locale (partite contro i bot nel browser).
+app.get('/lib/engine.js', (_req, res) => res.sendFile(path.join(__dirname, 'game', 'engine.js')));
+app.get('/lib/bots.js', (_req, res) => res.sendFile(path.join(__dirname, 'game', 'bots.js')));
 app.get('/health', (_req, res) => res.json({ ok: true }));
 
 // Pulizia periodica delle stanze vuote scadute.

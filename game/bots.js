@@ -22,8 +22,13 @@ const BOT_NAMES = [
   'Nino', 'Carla', 'Ettore', 'Mirella', 'Dante', 'Olga', 'Fausto', 'Ines',
 ];
 
-// Con PERUDO_BOT_FAST=1 i tempi di riflessione si comprimono (per i test).
-const SPEED = process.env.PERUDO_BOT_FAST ? 0.06 : 1;
+// Con PERUDO_BOT_FAST i tempi di riflessione si comprimono (per i test).
+// Valutato a ogni chiamata: funziona sia in Node (env) che nel browser (global).
+function speed() {
+  if (typeof process !== 'undefined' && process.env && process.env.PERUDO_BOT_FAST) return 0.06;
+  if (typeof window !== 'undefined' && window.PERUDO_BOT_FAST) return 0.06;
+  return 1;
+}
 
 function rand() {
   return Math.random();
@@ -238,10 +243,11 @@ const DELAYS = {
 };
 function thinkDelay(pers, kind) {
   const [a, b] = DELAYS[kind] || DELAYS.turn;
-  return Math.max(60, Math.round(randIn(a, b) * (pers ? pers.tempo : 1) * SPEED));
+  return Math.max(60, Math.round(randIn(a, b) * (pers ? pers.tempo : 1) * speed()));
 }
 
-module.exports = {
+// Doppio export: CommonJS per il server/test, global per il browser.
+const BOTS_EXPORTS = {
   makeBots,
   chooseTurnAction,
   chooseOpen,
@@ -255,3 +261,8 @@ module.exports = {
   binom,
   BOT_NAMES,
 };
+if (typeof module !== 'undefined' && module.exports) {
+  module.exports = BOTS_EXPORTS;
+} else if (typeof window !== 'undefined') {
+  window.PerudoBots = BOTS_EXPORTS;
+}
