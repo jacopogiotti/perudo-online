@@ -1281,14 +1281,21 @@ button:disabled {
 
 /* maniglia ☰ per trascinare i giocatori (lobby locale, solo host) */
 .drag-handle {
-  width: 30px;
-  height: 34px;
+  width: 34px;
+  height: 38px;
   flex: none;
   display: grid;
   place-items: center;
   cursor: grab;
   touch-action: none; /* il dito trascina la riga, non scrolla la pagina */
   opacity: 0.7;
+}
+/* niente selezione/callout da long-press: su mobile cancellerebbero il drag */
+#lobby-players li,
+.drag-handle {
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 .drag-handle::before {
   content: '';

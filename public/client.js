@@ -625,18 +625,25 @@ $('#calza-warn-back').addEventListener('click', () => {
 
 /** Trascinamento di una riga della lista giocatori tramite la maniglia ☰.
  *  Anteprima live spostando la riga nel DOM; al rilascio si conferma la
- *  posizione con 'movePlayer' (che ri-broadcasta lo stato). */
+ *  posizione con 'movePlayer' (che ri-broadcasta lo stato).
+ *  Blindato per il touch: listener su window (sopravvive se il dito esce
+ *  dalla maniglia o la capture fallisce), touch-action inline (indipendente
+ *  dalla cache del CSS), blocco di scroll/selezione/menu contestuale. */
 function attachDragReorder(handle, li, playerId) {
+  handle.style.touchAction = 'none';
+  handle.addEventListener('contextmenu', (e) => e.preventDefault());
   handle.addEventListener('pointerdown', (e) => {
     e.preventDefault();
     const ul = li.parentElement;
     try {
       handle.setPointerCapture(e.pointerId);
     } catch (_) {
-      /* eventi sintetici o browser senza capture: si va di listener diretti */
+      /* eventi sintetici o capture non disponibile: i listener su window bastano */
     }
     li.classList.add('dragging');
+    const stopTouch = (tev) => tev.preventDefault(); // niente scroll durante il drag
     const move = (ev) => {
+      if (ev.pointerId !== e.pointerId) return;
       const el = document.elementFromPoint(ev.clientX, ev.clientY);
       const over = el && el.closest ? el.closest('#lobby-players li') : null;
       if (!over || over === li) return;
@@ -644,19 +651,22 @@ function attachDragReorder(handle, li, playerId) {
       if (ev.clientY < r.top + r.height / 2) ul.insertBefore(li, over);
       else ul.insertBefore(li, over.nextSibling);
     };
-    const up = () => {
-      handle.removeEventListener('pointermove', move);
-      handle.removeEventListener('pointerup', up);
-      handle.removeEventListener('pointercancel', up);
+    const up = (ev) => {
+      if (ev && ev.pointerId !== undefined && ev.pointerId !== e.pointerId) return;
+      window.removeEventListener('pointermove', move);
+      window.removeEventListener('pointerup', up);
+      window.removeEventListener('pointercancel', up);
+      window.removeEventListener('touchmove', stopTouch);
       li.classList.remove('dragging');
       const to = [...ul.children].indexOf(li);
       gameEmit('movePlayer', { playerId, to }, (r) => {
         if (!r.ok) toast(r.error);
       });
     };
-    handle.addEventListener('pointermove', move);
-    handle.addEventListener('pointerup', up);
-    handle.addEventListener('pointercancel', up);
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
+    window.addEventListener('touchmove', stopTouch, { passive: false });
   });
 }
 
