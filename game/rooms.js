@@ -202,6 +202,35 @@ class RoomManager {
     return { room, player };
   }
 
+  /** Aggiunge un bot al tavolo (solo host, solo in lobby, entro MAX_PLAYERS). */
+  addBot(code, requesterId) {
+    const room = this.getRoom(code);
+    if (!room) return { error: 'Tavolo non trovato.' };
+    if (requesterId !== room.hostId) {
+      return { error: "Solo l'host può aggiungere bot." };
+    }
+    if (room.status !== 'lobby') {
+      return { error: "I bot si aggiungono prima dell'avvio." };
+    }
+    if (room.players.length >= MAX_PLAYERS) {
+      return { error: `Tavolo pieno (max ${MAX_PLAYERS} giocatori).` };
+    }
+    const [b] = makeBots(1, room.players.map((p) => p.name));
+    if (!b) return { error: 'Nessun nome disponibile per un altro bot.' };
+    const bot = {
+      id: newId(),
+      token: newToken(),
+      name: b.name,
+      isHost: false,
+      connected: true,
+      isBot: true,
+    };
+    room.players.push(bot);
+    if (!room.botBrains) room.botBrains = {};
+    room.botBrains[bot.id] = b.personality;
+    return { room, bot };
+  }
+
   startGame(code, requesterId) {
     const room = this.getRoom(code);
     if (!room) return { error: 'Tavolo non trovato.' };

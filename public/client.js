@@ -580,6 +580,12 @@ $('#btn-share').addEventListener('click', async () => {
   }
 });
 
+$('#btn-add-bot').addEventListener('click', () => {
+  socket.emit('addBot', {}, (res) => {
+    if (!res.ok) toast(res.error);
+  });
+});
+
 function startGameNow() {
   socket.emit('startGame', {}, (res) => {
     if (!res.ok) toast(res.error);
@@ -642,6 +648,7 @@ function renderLobby(room) {
     hostCtrl.classList.remove('hidden');
     guestNote.classList.add('hidden');
     $('#lobby-dice-info').textContent = tableInfo;
+    $('#btn-add-bot').disabled = room.players.length >= room.maxPlayers;
     const enough = room.players.length >= room.minPlayers;
     $('#btn-start').disabled = !enough;
     $('#start-hint').textContent = enough ? '' : t('needPlayers', { n: room.minPlayers });

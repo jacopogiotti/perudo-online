@@ -674,6 +674,15 @@ io.on('connection', (socket) => {
     if (!res.error) broadcastRoom(room);
   });
 
+  // --- Aggiunta bot (host, solo in lobby) ---
+  socket.on('addBot', (_data, cb) => {
+    const ctx = socket.data || {};
+    const res = manager.addBot(ctx.code, ctx.playerId);
+    if (res.error) return ack(cb, { ok: false, error: res.error });
+    ack(cb, { ok: true });
+    broadcastRoom(res.room);
+  });
+
   // --- Espulsione giocatore (host, solo in lobby) ---
   socket.on('kickPlayer', ({ playerId } = {}, cb) => {
     const ctx = socket.data || {};

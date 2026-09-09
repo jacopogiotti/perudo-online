@@ -38,6 +38,7 @@ const I18N = {
     // lobby
     btnShare: '📋 Copia link invito',
     players: 'Giocatori',
+    addBot: '🤖 Aggiungi un bot',
     btnStart: 'Avvia partita',
     btnCloseLobby: 'Chiudi tavolo',
     guestWait: "In attesa che l'host avvii la partita…",
@@ -229,6 +230,7 @@ const I18N = {
     btnJoin: 'Join',
     btnShare: '📋 Copy invite link',
     players: 'Players',
+    addBot: '🤖 Add a bot',
     btnStart: 'Start game',
     btnCloseLobby: 'Close table',
     guestWait: 'Waiting for the host to start the game…',
@@ -422,9 +424,13 @@ const SERVER_MSG_EN = new Map([
     'Official version: the one answering the bid cannot call Calza.',
   ],
   ['La dichiarazione è cambiata, riprova.', 'The bid changed, try again.'],
+  ["Solo l'host può aggiungere bot.", 'Only the host can add bots.'],
+  ["I bot si aggiungono prima dell'avvio.", 'Bots can be added only before the game starts.'],
+  ['Nessun nome disponibile per un altro bot.', 'No name left for another bot.'],
 ]);
 const SERVER_MSG_EN_RX = [
   [/^Per passare agli 1 servono almeno (\d+) dadi\.$/, 'To switch to ones you need at least {n} dice.'],
   [/^Uscendo dagli 1 servono almeno (\d+) dadi\.$/, 'Coming back from ones you need at least {n} dice.'],
   [/^Servono almeno (\d+) giocatori\.$/, 'At least {n} players are needed.'],
+  [/^Tavolo pieno \(max (\d+) giocatori\)\.$/, 'Table full (max {n} players).'],
 ];
